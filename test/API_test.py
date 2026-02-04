@@ -9,7 +9,7 @@ from evogym import EvoWorld, EvoSim, EvoViewer, sample_robot
 
 max_step = 100
 
-world = EvoWorld.from_json('test_env.json')
+world = EvoWorld.from_json('test/test_env.json')
 
 robot_structure, robot_connections = sample_robot((5, 5))
 
