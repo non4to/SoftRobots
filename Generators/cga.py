@@ -1,18 +1,8 @@
 import numpy as np
+import Search
 from typing import Optional
+from robot.basicrobot import SinRobot as Robot, get_random, get_fromfile
 
-class FakeChromossomeClass():
-    def __init__(self) -> None:
-        self.fit = 0
-        pass
-    
-    def crossover(self, crossWith:'FakeChromossomeClass') -> 'FakeChromossomeClass':
-        #Crossover self with cromossome
-        #create a copy of self and crossover and return
-        return crossWith
-    
-    def mutate(self, mutChance:float) -> 'FakeChromossomeClass':
-        return self
 
 class CGA():
     def __init__(self, rows:int, cols:int, maxGeneration:int, toroidal:bool=False, mutationChance:float = 0.05, seed: Optional[int]=None):
@@ -20,7 +10,7 @@ class CGA():
         self.rows = rows
         self.cols = cols
         self.toroidal = toroidal
-        self.grid:dict[tuple[int,int],'FakeChromossomeClass'] = {}
+        self.grid:dict[tuple[int,int],'Robot'] = {}
         self.lastGen = maxGeneration
         self.currentGen:int = 0
         self.mutationChance = mutationChance
@@ -30,9 +20,9 @@ class CGA():
             for j in range(cols):
                 self.grid[(i, j)] = self.get_random_cromossome()
                 
-    def get_random_cromossome(self) -> 'FakeChromossomeClass':
+    def get_random_cromossome(self) -> 'Robot':
         """Creates a random individual"""
-        return FakeChromossomeClass()     
+        return Robot()     
     
     def get_moore_neighbors(self, pos: tuple[int,int]) -> list[tuple[int,int]]:
         """Returns moore neighbors depending of [self.toroidal] value"""
@@ -60,10 +50,10 @@ class CGA():
                     output.append((neighPosX,neighPosY))  
             return output
     
-    def save_grid(self, address:str, grid2Save:dict[tuple[int,int],'FakeChromossomeClass']) -> None:
+    def save_grid(self, address:str, grid2Save:dict[tuple[int,int],'Robot']) -> None:
         pass
     
-    def evaluate(self, chromossome:'FakeChromossomeClass') -> float:
+    def evaluate(self, chromossome:'Robot') -> float:
         #Evaluates cromossome, change fitness inside itself, return calculated fitness
         return 0.75
         
@@ -78,8 +68,9 @@ class CGA():
                 parent1 = self.grid[(x,y)]
                 p1Neighbors = self.get_moore_neighbors(pos=(x,y))
                 parent2 = self.grid[self.select(neighbors=p1Neighbors)]
-                child = parent1.crossover(crossWith=parent2)
-                child = child.mutate(mutChance=self.mutationChance)
+                child = parent1.crossover(mate=parent2)
+                if self._random.random() <= self.mutationChance:
+                    child = child.mutate()
                 childFit = self.evaluate(chromossome=child)
                 if childFit >= parent1.fit:
                     newGrid[(x,y)] = child

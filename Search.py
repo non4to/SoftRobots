@@ -35,7 +35,6 @@ class suppress_stdout_stderr(object):
 def mean(l):
   return sum(l)/len(l)
 
-
 def evaluate(robot, world, sim_step):
   stime = time.time()
   world.restart()
@@ -55,7 +54,6 @@ def evaluate(robot, world, sim_step):
   etime = time.time()
 
   return score, (etime - stime)
-
 
 def GA_search(robot_m, world, options, prefix):
   popsize = 20
@@ -132,15 +130,6 @@ def GA_search(robot_m, world, options, prefix):
 
   return meantime
 
-
-
-
-
-
-
-
-
-
 def ES_search(robot_m, world, options, prefix):
   # 1+lambda ES: Get the best robot out of 5 mutations with elitism
   offspring = 5 # lambda
@@ -179,7 +168,6 @@ def ES_search(robot_m, world, options, prefix):
 
   return meantime
 
-
 def random_search(robot_m, world, options, prefix):
   best_robot = None
   best_score = None
@@ -212,7 +200,6 @@ def random_search(robot_m, world, options, prefix):
       best_robot.save_json(f"{prefix}_robot_{rep:05}.json")
 
   return meantime
-
 
 def main():
   options, args = parse_args()

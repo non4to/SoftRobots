@@ -4,14 +4,15 @@ import numpy as np
 from PIL import Image
 import imageio
 from pygifsicle import optimize
-
 from evogym import EvoWorld, EvoSim, EvoViewer, sample_robot
+from robot.basicrobot import SinRobot as Robot, get_random, get_fromfile
 
 max_step = 100
 
 world = EvoWorld.from_json('test/test_env.json')
 
 robot_structure, robot_connections = sample_robot((5, 5))
+robot = get_random(w=5,h=5)
 
 # print(robot_structure)
 # print(robot_connections)

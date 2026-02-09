@@ -7,7 +7,7 @@ def get_random(w = 5, h = 5):
     r.randomize(w, h)
     return r
 
-def get_fromfile(filename):
+def get_fromfile(filename:str):
     r = SinRobot()
     r.load_json(filename)
     return r
@@ -20,14 +20,14 @@ class SinRobot:
         return (is_connected(self.shape) and
                 (3 in self.shape or 4 in self.shape))
 
-    def save_json(self, filename):
+    def save_json(self, filename:str):
         with open(filename, "w") as out_f:
             data = {"class": __name__, "shape": self.shape.tolist()}
             json.dump(data,
                       out_f,
                       separators = (',', ':'))
 
-    def load_json(self, filename):
+    def load_json(self, filename:str):
         with open(filename, "r") as in_f:
             rdata = json.loads(in_f.read())
             if rdata["class"] != __name__:
@@ -57,7 +57,7 @@ class SinRobot:
 
         return count
 
-    def action(self, steps):
+    def action(self, steps: float):
         action = []
         for _ in range(self.count_actuators()):
             action.append(np.sin(steps/3 + (_*0.1))+1)
