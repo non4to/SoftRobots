@@ -5,11 +5,10 @@ import json
 # This world loads a line with a few bumps.
 # The goal of the robot is to go as far as possible
 
-def get_random(length = 60, freq = 0.1,
+def get_random(rng=None, length = 60, freq = 0.1,
                bump_height = 3, bump_length = 10):
-    return LineWorld(length = length, freq = freq,
+    return LineWorld(rng = rng, length = length, freq = freq,
                      bump_height = bump_height, bump_length = bump_length)
-
 
 def get_fromfile(filename):
     return LineWorld(filename = filename)
@@ -20,17 +19,22 @@ class LineWorld():
     robot = None
     sim = None
 
-    def __init__(self, filename = None,
+    def __init__(self, filename = None, rng=None,
                  length = 40, freq = 0.1, bump_height = 2, bump_length = 10):
         # Load from a file or
         # Generate random - line with random square blocks
+        self._rng = rng if rng is not None else np.random.default_rng()
+        
         if filename is None:
             floor = np.zeros((bump_height+1, length))
             floor[-1,:] = 5
             for i in range(length):
-                if (i > 5 and np.random.random() < freq):
-                    bl = i + np.random.randint(bump_length + 1)
-                    bh = np.random.randint(2, bump_height + 2)
+                if (i > 5 and self._rng.random() < freq):
+                    bl = i + self._rng.integers(bump_length + 1)
+                    bh = self._rng.integers(2, bump_height + 2)
+                # if (i > 5 and np.random.random() < freq):
+                    # bl = i + np.random.randint(bump_length + 1)
+                    # bh = np.random.randint(2, bump_height + 2)
                     floor[-bh:, i:bl] = 5
             self.world = EvoWorld()
             self.world.add_from_array(name = "Floor",

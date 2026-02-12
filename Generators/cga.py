@@ -3,12 +3,11 @@ import Search
 from typing import Optional
 from robot.basicrobot import SinRobot as Robot, get_random, get_fromfile
 
-
 class CGA():
-    def __init__(self, rows:int, cols:int, maxGeneration:int, toroidal:bool=False, mutationChance:float = 0.05, seed: Optional[int]=None):
+    def __init__(self, size:int, maxGeneration:int, toroidal:bool=False, mutationChance:float = 0.05, seed: Optional[int]=None):
         self._random = np.random.default_rng(seed)
-        self.rows = rows
-        self.cols = cols
+        self.rows = size
+        self.cols = size
         self.toroidal = toroidal
         self.grid:dict[tuple[int,int],'Robot'] = {}
         self.lastGen = maxGeneration
@@ -16,8 +15,8 @@ class CGA():
         self.mutationChance = mutationChance
         
         # Start population
-        for i in range(rows):
-            for j in range(cols):
+        for i in range(size):
+            for j in range(size):
                 self.grid[(i, j)] = self.get_random_cromossome()
                 
     def get_random_cromossome(self) -> 'Robot':
@@ -50,7 +49,7 @@ class CGA():
                     output.append((neighPosX,neighPosY))  
             return output
     
-    def save_grid(self, address:str, grid2Save:dict[tuple[int,int],'Robot']) -> None:
+    def save_grid(self, address:str) -> None:
         pass
     
     def evaluate(self, chromossome:'Robot') -> float:

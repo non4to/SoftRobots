@@ -203,6 +203,8 @@ def random_search(robot_m, world, options, prefix):
 
 def main():
   options, args = parse_args()
+  print(options)
+  print(args)
 
   if not os.path.exists(options.logdir):
     os.mkdir(options.logdir)
@@ -240,7 +242,6 @@ def main():
   
   print(f"Simulation times: avg: {mean(simtime)}, max: {max(simtime)}, min: {min(simtime)}")
 
-
 def parse_args():
   usage = "usage: %prog [options] <world type> <robot type>"
   desc = """Performs a random search on the environment "world type", using
@@ -252,6 +253,10 @@ score.
   
   parser = OptionParser(usage = usage, description = desc) 
 
+  parser.add_option("--seed", default = 7,
+                    type="int", action="store",
+                    help="Seed number. Default 7.")
+  
   parser.add_option("-s", "--sim_step", default = 400,
                     type="int", action="store",
                     help="Number of Simulation Steps. Default 400.")
@@ -260,10 +265,10 @@ score.
                     type="int", action="store",
                     help="Number of Evaluations. Default 400.")
 
-  algorithms = ["random", "ES", "GA"]
+  algorithms = ["random", "ES", "GA", "CGA"]
   parser.add_option("-A", "--search_algorithm",
                     type = "choice", choices = algorithms,
-                    default = algorithms[0],
+                    default = algorithms[0], #default is random
                     help="Which search algorithm to use. Default random.")
 
   parser.add_option("-d", "--logdir",
@@ -277,6 +282,20 @@ score.
   parser.add_option("--numprocs",
                     type ="int", default = 5,
                     help = "Number of cores to use for parallel processing. Default 5")
+  
+  parser.add_option("--mut_chance",
+                    type ="float", default = 0.05,
+                    help = "Mutation chance. Default 0.05")
+
+  
+  ### Algo-specific-instructions
+  parser.add_option("--cga_grid_size",
+                    type = "int", default = 10,
+                    help = "Side size of square grid. Default 10")
+  
+  parser.add_option("--cga_toroid",
+                    action="store_true", default=False,
+                    help="Use toroidal grid. Default: False")
   
   # parser.add_option("-q", "--quiet", default=True,
   #                   action="store_false", dest="verbose",

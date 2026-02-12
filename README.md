@@ -37,5 +37,11 @@ originally!). Use `python Visualize -h` for options.
 - Install python dependencies (for evogym): `pip install glfw PyOpenGL ttkbootstrap` 
 - Install python dependencies (for this repo): `pip install pygifsicle imageio`
 
+## How to use
+- python3 Search.py [world] [robot] [args]
+    - [world] -> must be inside world folder
+    - [robot] -> must be inside robot folder
+    - [args] -> use `python Search.py -h` for options.
+
 ## About
 - This repository was created by [Claus Aranha](https://conclave.cs.tsukuba.ac.jp)

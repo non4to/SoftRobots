@@ -2,19 +2,20 @@ import json
 import numpy as np
 from evogym import is_connected
 
-def get_random(w = 5, h = 5):
-    r = SinRobot()
+def get_random(w = 5, h = 5, rng=None):
+    r = SinRobot(rng)
     r.randomize(w, h)
     return r
 
-def get_fromfile(filename:str):
-    r = SinRobot()
+def get_fromfile(filename:str, rng=None):
+    r = SinRobot(rng)
     r.load_json(filename)
     return r
 
 class SinRobot:
-    def __init__(self):
+    def __init__(self, rng=None):
         self.shape = np.array([[1]])
+        self._rng = rng if rng is not None else np.random.default_rng()
 
     def valid(self):
         return (is_connected(self.shape) and
@@ -42,7 +43,7 @@ class SinRobot:
     def randomize(self, w = 5, h = 5):
         count = 0;
         while True:
-            self.shape = np.random.randint(0,5,(w,h))
+            self.shape = self._rng.integers(low=0,high=5,size=(w,h))    #np.random.randint(0,5,(w,h))
             if self.valid():
                 break
             count += 1
@@ -68,8 +69,8 @@ class SinRobot:
             count = 0
             while True:
                 old_shape = self.shape.copy()
-                pos = tuple(np.random.randint(0,5,2))
-                self.shape[pos] = np.random.randint(0,5)
+                pos = tuple(self._rng.integers(0,5,2))#tuple(np.random.randint(0,5,2))
+                self.shape[pos] = self._rng.integers(0,5)#np.random.randint(0,5)
                 if self.valid():
                     break
 
@@ -86,7 +87,7 @@ class SinRobot:
             child1 = self.copy()
             child2 = self.copy()
 
-            pos = np.random.randint(0,4)
+            pos = self._rng.integers(0,4)#np.random.randint(0,4)
 
             for i in range(5):
                 if i > pos:
@@ -105,3 +106,4 @@ class SinRobot:
 
             if count > 5000:
                 return self.copy()
+
