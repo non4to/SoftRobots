@@ -36,7 +36,7 @@ class SinRobot:
             self.shape = np.array(rdata["shape"])
 
     def copy(self):
-        _new = SinRobot()
+        _new = SinRobot(self._rng)
         _new.shape = self.shape.copy()
         return _new
             

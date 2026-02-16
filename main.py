@@ -1,10 +1,29 @@
-import time, os, random, Search as Search
+import time, os, random, numpy as np, Search as Search
 import importlib, json
 from multiprocessing import Pool
 from optparse import OptionParser
 from Generators.cga import CGA
+from types import SimpleNamespace
+import sys
 
-def main(seed):
+def main(world_type:str, robot_type:str, seed:int=7, sim_step:int=400, evo_step:int=400,
+    search_algorithm:str='random', logdir:str="log", prefix:str='',
+    numprocs:int=5, mut_chance: float=0.05, cga_grid_size:int=10, cga_toroid:bool=False):
+    options = SimpleNamespace(
+        seed = seed,
+        sim_step =  sim_step,
+        evo_step = evo_step,
+        search_algorithm = search_algorithm,
+        logdir = logdir,
+        prefix = prefix,
+        numprocs = numprocs,
+        mut_chance = mut_chance,
+        cga_grid_size = cga_grid_size,
+        cga_toroid = cga_toroid)
+    
+    args = [world_type, robot_type]
+    rng = np.random.default_rng(options.seed)
+
     options, args = Search.parse_args()
 
     if not os.path.exists(options.logdir):
@@ -25,7 +44,7 @@ def main(seed):
     else:
         print(f"Creating new world from module {args[0]}.")
         world_m = importlib.import_module("."+args[0], "world")
-        world = world_m.get_random()
+        world = world_m.get_random(rng=rng)
         world.save_json(f"{prefix}_world.json")
         world.world_file = f"{prefix}_world.json"
 
@@ -33,19 +52,54 @@ def main(seed):
     robot_m = importlib.import_module("."+args[1], "robot")
 
     # Running the optimization
-    if options.search_algorithm=="CGA":
-        generator = CGA(size=options.cga_grid_size,
-                        maxGeneration=options.evo_step,
-                        toroidal=options.toroidal,
-                        mutationChance=options.mut_chance,
-                        seed=options.seed)
-    #elif options.search_algorithm=="GA":
-    ###
-    generator.reset()
-    for gen in range(options.evo_step):
-        generator.update()
-        generator.save_grid(address="")
+    algorithms = {
+        "random": Search.random_search,
+        "ES": Search.ES_search,
+        "GA": Search.GA_search,
+    }
+
+    simtime = algorithms[options.search_algorithm](robot_m, world, options, prefix, rng)
+    
+    print(f"Simulation times: avg: {Search.mean(simtime)}, max: {max(simtime)}, min: {min(simtime)}")
+
+    
+    # if options.search_algorithm=="CGA":
+    #     generator = CGA(size=options.cga_grid_size,
+    #                     maxGeneration=options.evo_step,
+    #                     toroidal=options.toroidal,
+    #                     mutationChance=options.mut_chance,
+    #                     seed=options.seed)
+    # #elif options.search_algorithm=="GA":
+    # ###
+    # generator.reset()
+    # for gen in range(options.evo_step):
+    #     generator.update()
+    #     generator.save_grid(address="")
     
 
 if __name__ == "__main__":
-    main(7)
+    wt:str = 
+    rt:str = 'basicrobot' 
+    sd:int = 7
+    ss:int = 400
+    es:int = 400
+    sa:str='random'
+    ld:str="log"
+    pf:str=''
+    np:int=5
+    mc: float=0.05
+    cga_g:int=10
+    cga_t:bool=False
+    
+    main(world_type=wt, 
+        robot_type=rt,
+        seed=sd,
+        sim_step=ss,
+        evo_step=es,
+        search_algorithm=sa,
+        logdir=ld,
+        prefix=pf,
+        numprocs=np,
+        mut_chance=mc,
+        cga_grid_size=cga_s,
+        cga_toroid=cga_t)

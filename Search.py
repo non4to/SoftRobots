@@ -1,5 +1,6 @@
 import time, os, random
 import importlib, json
+import numpy as np
 from multiprocessing import Pool
 
 from optparse import OptionParser
@@ -55,7 +56,7 @@ def evaluate(robot, world, sim_step):
 
   return score, (etime - stime)
 
-def GA_search(robot_m, world, options, prefix):
+def GA_search(robot_m, world, options, prefix, rng):
   popsize = 20
   mutprob = 0.3
 
@@ -76,7 +77,7 @@ def GA_search(robot_m, world, options, prefix):
   rep = popsize
 
   for _ in range(popsize):
-    r = robot_m.get_random()
+    r = robot_m.get_random(rng=rng)
     population.append(r)
 
   evalpars = []
@@ -103,7 +104,7 @@ def GA_search(robot_m, world, options, prefix):
       p1 = tournament(population, fitness, k = 2)
       p2 = tournament(population, fitness, k = 2)
       offspring = p1.crossover(p2)
-      if random.random() < mutprob:
+      if rng.random() < mutprob:
         offspring.mutate()
       newpop.append(offspring)
 
@@ -130,11 +131,11 @@ def GA_search(robot_m, world, options, prefix):
 
   return meantime
 
-def ES_search(robot_m, world, options, prefix):
+def ES_search(robot_m, world, options, prefix, rng):
   # 1+lambda ES: Get the best robot out of 5 mutations with elitism
   offspring = 5 # lambda
 
-  best_robot = robot_m.get_random()
+  best_robot = robot_m.get_random(rng=rng)
   best_score = evaluate(best_robot, world, options.sim_step)[0]
   rep = 1
 
@@ -168,7 +169,7 @@ def ES_search(robot_m, world, options, prefix):
 
   return meantime
 
-def random_search(robot_m, world, options, prefix):
+def random_search(robot_m, world, options, prefix, rng):
   best_robot = None
   best_score = None
 
@@ -178,7 +179,7 @@ def random_search(robot_m, world, options, prefix):
   while rep < options.evo_step:  
     paramlist = []
     for _ in range(options.numprocs):
-      paramlist.append((robot_m.get_random(), world, options.sim_step))
+      paramlist.append((robot_m.get_random(rng=rng), world, options.sim_step))
 
     with Pool(options.numprocs) as p:
       scores = p.starmap(evaluate, paramlist)
@@ -211,6 +212,7 @@ def main():
 
   today  = time.strftime("%m%d%H%M")
   prefix = f"{options.logdir}{os.sep}{options.prefix}_{options.search_algorithm}_{today}"
+  rng = np.random.default_rng(options.seed)
 
   # Loading the world from a module (random) or file (fixed)
   if (args[0][-5:] == ".json"):
@@ -224,7 +226,7 @@ def main():
   else:
     print(f"Creating new world from module {args[0]}.")
     world_m = importlib.import_module("."+args[0], "world")
-    world = world_m.get_random()
+    world = world_m.get_random(rng=rng)
     world.save_json(f"{prefix}_world.json")
     world.world_file = f"{prefix}_world.json"
 
@@ -238,7 +240,7 @@ def main():
     "GA": GA_search,
   }
 
-  simtime = algorithms[options.search_algorithm](robot_m, world, options, prefix)
+  simtime = algorithms[options.search_algorithm](robot_m, world, options, prefix, rng)
   
   print(f"Simulation times: avg: {mean(simtime)}, max: {max(simtime)}, min: {min(simtime)}")
 
