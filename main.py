@@ -78,28 +78,7 @@ def main(world_type:str, robot_type:str, seed:int=7, sim_step:int=400, evo_step:
     
 
 if __name__ == "__main__":
-    wt:str = 
-    rt:str = 'basicrobot' 
-    sd:int = 7
-    ss:int = 400
-    es:int = 400
-    sa:str='random'
-    ld:str="log"
-    pf:str=''
-    np:int=5
-    mc: float=0.05
-    cga_g:int=10
-    cga_t:bool=False
+    with open('parameters.json', 'r') as f:
+        params = json.load(f)       
     
-    main(world_type=wt, 
-        robot_type=rt,
-        seed=sd,
-        sim_step=ss,
-        evo_step=es,
-        search_algorithm=sa,
-        logdir=ld,
-        prefix=pf,
-        numprocs=np,
-        mut_chance=mc,
-        cga_grid_size=cga_s,
-        cga_toroid=cga_t)
+    main(**params)

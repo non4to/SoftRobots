@@ -1,0 +1,14 @@
+{
+"world_type": "walk_line",
+"robot_type": "basicrobot",
+"seed": 7,
+"sim_step": 400,
+"evo_step": 30,
+"search_algorithm": "random",
+"logdir": "log",
+"prefix": "",
+"numprocs": 5,
+"mut_chance": 0.05,
+"cga_grid_size": 10,
+"cga_toroid": false
+}
