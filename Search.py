@@ -60,8 +60,10 @@ def GA_search(robot_m, world, options, prefix, rng):
   popsize = 20
   mutprob = 0.3
 
-  def tournament(pop, fit, k = 2):
-    idx = random.sample(range(len(pop)), k)
+  def tournament(pop, fit, rng=None, k = 2):
+    _rng = rng if rng is not None else np.random.default_rng()
+    idx = _rng.choice(len(pop), size=k, replace=False)
+    # idx = _rng.sample(range(len(pop)), k)
     tpop = []
     tfit = []
     for i in idx:
@@ -101,8 +103,8 @@ def GA_search(robot_m, world, options, prefix, rng):
     rep += popsize
 
     for _ in range(popsize):
-      p1 = tournament(population, fitness, k = 2)
-      p2 = tournament(population, fitness, k = 2)
+      p1 = tournament(population, fitness, rng, k = 2)
+      p2 = tournament(population, fitness, rng, k = 2)
       offspring = p1.crossover(p2)
       if rng.random() < mutprob:
         offspring.mutate()

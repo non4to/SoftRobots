@@ -1,27 +1,28 @@
-import numpy as np
-import Search
+import numpy as np, time
+import Search as Search
 from typing import Optional
+from multiprocessing import Pool
 from robot.basicrobot import SinRobot as Robot, get_random, get_fromfile
 
 class CGA():
-    def __init__(self, size:int, maxGeneration:int, toroidal:bool=False, mutationChance:float = 0.05, seed: Optional[int]=None):
-        self._random = np.random.default_rng(seed)
+    def __init__(self, numprocs, robotModule, worldModule, sim_step:int, size:int, maxGeneration:int, toroidal:bool=False, mutationChance:float = 0.05, rng: Optional[np.random.Generator]=None):
+        self._random = rng if rng is not None else np.random.default_rng()
+        self._robot = robotModule
+        self._world = worldModule
+        self._sim_step = sim_step
+        self._numprocs = numprocs
         self.rows = size
         self.cols = size
         self.toroidal = toroidal
         self.grid:dict[tuple[int,int],'Robot'] = {}
         self.lastGen = maxGeneration
-        self.currentGen:int = 0
         self.mutationChance = mutationChance
-        
-        # Start population
-        for i in range(size):
-            for j in range(size):
-                self.grid[(i, j)] = self.get_random_cromossome()
-                
-    def get_random_cromossome(self) -> 'Robot':
-        """Creates a random individual"""
-        return Robot()     
+                        
+        self.currentGen:int = 0
+        self.meanTime = []
+
+        #Best Dict
+        self._bestDict = {"pos":(-1,-1), "fit":-1, "robot":None}    
     
     def get_moore_neighbors(self, pos: tuple[int,int]) -> list[tuple[int,int]]:
         """Returns moore neighbors depending of [self.toroidal] value"""
@@ -49,19 +50,56 @@ class CGA():
                     output.append((neighPosX,neighPosY))  
             return output
     
+    def reset(self) -> None:
+        evalpars = []
+        botsList = []
+
+        #random bots as start population
+        for y in range(self.rows):
+            for x in range(self.cols):
+                robot = self._robot.get_random(rng=self._random)
+                botsList.append(((x,y), robot))
+                evalpars.append((robot, self._world, self._sim_step))
+
+        #Evaluate bots
+        with Pool(self._numprocs) as p:
+            scores = p.starmap(Search.evaluate, evalpars)
+        
+        for s in scores:
+            self.meanTime.append(s[1])
+
+        #fill grid
+        for i, (pos, bot) in enumerate(botsList):
+            bot.fit = scores[i][0]
+            self.check_best(bot, pos)
+            self.grid[pos] = bot 
+
     def save_grid(self, address:str) -> None:
         pass
-    
-    def evaluate(self, chromossome:'Robot') -> float:
-        #Evaluates cromossome, change fitness inside itself, return calculated fitness
-        return 0.75
         
     def select(self, neighbors: list[tuple[int,int]]) -> tuple[int,int]:
-        return (-1,-1)
+        bots = [self.grid[pos] for pos in neighbors]
+        bots = sorted(bots, key=lambda bot: bot.fit, reverse=True)
+        a=1
+
+        return neighbors[0]
     
+    def check_best(self, newrobot, pos):
+        ####
+        if newrobot.fit > self._bestDict["fit"]:
+            self._bestDict["fit"] = newrobot.fit
+            self._bestDict["pos"] = pos
+            self._bestDict["robot"] = newrobot
+            print(f"New best found in Generation {self.currentGen} at {self._bestDict['pos']}: {self._bestDict['fit']}")
+        ####
+
     def update(self):        
         self.currentGen += 1
-        newGrid = {} 
+        print(f"Gen: {self.currentGen}")
+        childrenList = []
+        evalpars = []
+
+        #generate children
         for y in range(self.rows):
             for x in range(self.cols):
                 parent1 = self.grid[(x,y)]
@@ -70,11 +108,29 @@ class CGA():
                 child = parent1.crossover(mate=parent2)
                 if self._random.random() <= self.mutationChance:
                     child = child.mutate()
-                childFit = self.evaluate(chromossome=child)
-                if childFit >= parent1.fit:
-                    newGrid[(x,y)] = child
-                else:
-                    newGrid[(x,y)] = parent1
-        
+                childrenList.append(((x,y), child))
+                evalpars.append((child, self._world, self._sim_step))
+                # child.fit,_ = self.evaluate(robot=child)
+                # self.check_best(child, (x,y))
+                # if child.fit >= parent1.fit:
+                #     
+                # else:
+                #     children[(x,y)] = parent1
+
+        #evaluate children
+        with Pool(self._numprocs) as p:
+            scores = p.starmap(Search.evaluate, evalpars)
+
+        for s in scores:
+            self.meanTime.append(s[1])
+
+        #fill new grid
+        newGrid = {}
+        for i, (pos, child) in enumerate(childrenList):
+            child.fit = scores[i][0]
+            self.check_best(child, pos)
+            parent = self.grid[pos]
+            newGrid[pos] = child if child.fit >= parent.fit else parent
+
         self.grid = newGrid
                     

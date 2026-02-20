@@ -24,7 +24,7 @@ def main(world_type:str, robot_type:str, seed:int=7, sim_step:int=400, evo_step:
     args = [world_type, robot_type]
     rng = np.random.default_rng(options.seed)
 
-    options, args = Search.parse_args()
+    # options, args = Search.parse_args()
 
     if not os.path.exists(options.logdir):
         os.mkdir(options.logdir)
@@ -51,34 +51,41 @@ def main(world_type:str, robot_type:str, seed:int=7, sim_step:int=400, evo_step:
     # Loading robot from a module
     robot_m = importlib.import_module("."+args[1], "robot")
 
-    # Running the optimization
-    algorithms = {
-        "random": Search.random_search,
-        "ES": Search.ES_search,
-        "GA": Search.GA_search,
-    }
+    if options.search_algorithm=="CGA":
+        generator = CGA(robotModule=robot_m,
+                        worldModule=world,
+                        numprocs=options.numprocs,
+                        sim_step=options.sim_step,
+                        size=options.cga_grid_size,
+                        maxGeneration=options.evo_step,
+                        toroidal=options.cga_toroid,
+                        mutationChance=options.mut_chance,
+                        rng=rng)
+        #elif options.search_algorithm=="GA":
+        ###
+        generator.reset()
+        for gen in range(options.evo_step):
+            generator.update()
+            generator.save_grid(address="")
+        
+        print(f"Simulation times, Gen {gen}: avg: {Search.mean(generator.meanTime)}, max: {max(generator.meanTime)}, min: {min(generator.meanTime)}")
 
-    simtime = algorithms[options.search_algorithm](robot_m, world, options, prefix, rng)
-    
-    print(f"Simulation times: avg: {Search.mean(simtime)}, max: {max(simtime)}, min: {min(simtime)}")
+    else:
+        # Running the optimization
+        algorithms = {
+            "random": Search.random_search,
+            "ES": Search.ES_search,
+            "GA": Search.GA_search,
+        }
+        simtime = algorithms[options.search_algorithm](robot_m, world, options, prefix, rng)
+        print(f"Simulation times: avg: {Search.mean(simtime)}, max: {max(simtime)}, min: {min(simtime)}")
 
     
     # if options.search_algorithm=="CGA":
-    #     generator = CGA(size=options.cga_grid_size,
-    #                     maxGeneration=options.evo_step,
-    #                     toroidal=options.toroidal,
-    #                     mutationChance=options.mut_chance,
-    #                     seed=options.seed)
-    # #elif options.search_algorithm=="GA":
-    # ###
-    # generator.reset()
-    # for gen in range(options.evo_step):
-    #     generator.update()
-    #     generator.save_grid(address="")
+
     
 
 if __name__ == "__main__":
     with open('parameters.json', 'r') as f:
         params = json.load(f)       
-    
     main(**params)

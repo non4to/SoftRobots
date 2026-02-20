@@ -16,6 +16,7 @@ class SinRobot:
     def __init__(self, rng=None):
         self.shape = np.array([[1]])
         self._rng = rng if rng is not None else np.random.default_rng()
+        self.fit = -9999
 
     def valid(self):
         return (is_connected(self.shape) and
@@ -65,16 +66,17 @@ class SinRobot:
         return np.array(action)
 
     def mutate(self, size = 1):
+        mutatedBot = self.copy()
         for _ in range(size):
             count = 0
             while True:
-                old_shape = self.shape.copy()
-                pos = tuple(self._rng.integers(0,5,2))#tuple(np.random.randint(0,5,2))
-                self.shape[pos] = self._rng.integers(0,5)#np.random.randint(0,5)
-                if self.valid():
-                    break
+                old_shape = mutatedBot.shape.copy()
+                pos = tuple(mutatedBot._rng.integers(0,5,2))#tuple(np.random.randint(0,5,2))
+                mutatedBot.shape[pos] = mutatedBot._rng.integers(0,5)#np.random.randint(0,5)
+                if mutatedBot.valid():
+                    return mutatedBot
 
-                self.shape = old_shape
+                mutatedBot.shape = old_shape
                 count += 1
                 if count > 5000:
                     raise Exception("Can't find a valid mutation after 5000 tries!")
