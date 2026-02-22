@@ -17,14 +17,17 @@ class SinRobot:
         self.shape = np.array([[1]])
         self._rng = rng if rng is not None else np.random.default_rng()
         self.fit = -9999
+        self.id=-1
 
     def valid(self):
         return (is_connected(self.shape) and
                 (3 in self.shape or 4 in self.shape))
 
-    def save_json(self, filename:str):
+    def save_json(self, filename:str, extra=None):
+        if extra is None: extra = {}
         with open(filename, "w") as out_f:
-            data = {"class": __name__, "shape": self.shape.tolist()}
+            data = {"class": __name__, "id":self.id,"shape": self.shape.tolist(), "fit":self.fit}
+            data.update(extra)
             json.dump(data,
                       out_f,
                       separators = (',', ':'))

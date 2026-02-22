@@ -1,16 +1,19 @@
-import numpy as np, time
+import numpy as np, time, json, time, os
 import Search as Search
 from typing import Optional
 from multiprocessing import Pool
 from robot.basicrobot import SinRobot as Robot, get_random, get_fromfile
 
 class CGA():
-    def __init__(self, numprocs, robotModule, worldModule, sim_step:int, size:int, maxGeneration:int, toroidal:bool=False, mutationChance:float = 0.05, rng: Optional[np.random.Generator]=None):
+    def __init__(self, logdir, prefix, save_interval, numprocs, robotModule, worldModule, sim_step:int, size:int, maxGeneration:int, toroidal:bool=False, mutationChance:float = 0.05, rng: Optional[np.random.Generator]=None):
         self._random = rng if rng is not None else np.random.default_rng()
         self._robot = robotModule
         self._world = worldModule
         self._sim_step = sim_step
         self._numprocs = numprocs
+        self._prefix = prefix
+        self._logdir = logdir
+        self._save_interval = save_interval
         self.rows = size
         self.cols = size
         self.toroidal = toroidal
@@ -19,6 +22,7 @@ class CGA():
         self.mutationChance = mutationChance
                         
         self.currentGen:int = 0
+        self.robotCounter:int = 0
         self.meanTime = []
 
         #Best Dict
@@ -54,10 +58,14 @@ class CGA():
         evalpars = []
         botsList = []
 
+        # os.makedirs(self._prefix, exist_ok=True)
+
         #random bots as start population
         for y in range(self.rows):
             for x in range(self.cols):
                 robot = self._robot.get_random(rng=self._random)
+                robot.id = self.robotCounter
+                self.robotCounter += 1
                 botsList.append(((x,y), robot))
                 evalpars.append((robot, self._world, self._sim_step))
 
@@ -69,28 +77,48 @@ class CGA():
             self.meanTime.append(s[1])
 
         #fill grid
+        gridSnapShot = {}
         for i, (pos, bot) in enumerate(botsList):
             bot.fit = scores[i][0]
-            self.check_best(bot, pos)
+            self.check_best(bot, pos, "None")
             self.grid[pos] = bot 
+            bot.pos = pos
 
-    def save_grid(self, address:str) -> None:
-        pass
-        
+            key = f"({pos[0]},{pos[1]})"
+            gridSnapShot[key] = {"id": bot.id,
+                                "class": bot.__class__.__name__,
+                                "shape": bot.shape.tolist(),
+                                "parent": "None"}
+
+        with open(f"{self._prefix}{os.sep}grid_startPop.json", "w") as out_f:
+            json.dump(gridSnapShot, out_f, separators=(',', ':'))
+
     def select(self, neighbors: list[tuple[int,int]]) -> tuple[int,int]:
-        bots = [self.grid[pos] for pos in neighbors]
-        bots = sorted(bots, key=lambda bot: bot.fit, reverse=True)
-        a=1
+        # bots = [self.grid[pos] for pos in neighbors]
+        # sortedBots = sorted(bots, key=lambda bot: bot.fit, reverse=True)
+        sortedNeighbors = sorted(neighbors, key=lambda pos: self.grid[pos].fit, reverse=True)
+        
+        n = len(neighbors)
+        weights = [1 / (2**i) for i in range(n)]
+        weights[-1] = weights[-2]/2
+        total = sum(weights)
+        weights = [w/total for w in weights]
+        
+        picked = self._random.choice(len(neighbors), p=weights)
 
-        return neighbors[0]
+
+        return sortedNeighbors[picked]
     
-    def check_best(self, newrobot, pos):
+    def check_best(self, newrobot, pos, parentPos):
         ####
         if newrobot.fit > self._bestDict["fit"]:
             self._bestDict["fit"] = newrobot.fit
             self._bestDict["pos"] = pos
             self._bestDict["robot"] = newrobot
             print(f"New best found in Generation {self.currentGen} at {self._bestDict['pos']}: {self._bestDict['fit']}")
+            
+            newrobot.save_json(f"{self._prefix}{os.sep}robot_{pos[0]}_{pos[1]}_gen{self.currentGen}.json",
+                            {"parent":parentPos})
         ####
 
     def update(self):        
@@ -104,33 +132,49 @@ class CGA():
             for x in range(self.cols):
                 parent1 = self.grid[(x,y)]
                 p1Neighbors = self.get_moore_neighbors(pos=(x,y))
-                parent2 = self.grid[self.select(neighbors=p1Neighbors)]
+                parent2pos = self.select(neighbors=p1Neighbors)
+                parent2 = self.grid[parent2pos]
                 child = parent1.crossover(mate=parent2)
                 if self._random.random() <= self.mutationChance:
                     child = child.mutate()
-                childrenList.append(((x,y), child))
+
+                child.id = self.robotCounter
+                self.robotCounter += 1
+                childrenList.append(((x,y), child, parent2pos))
                 evalpars.append((child, self._world, self._sim_step))
-                # child.fit,_ = self.evaluate(robot=child)
-                # self.check_best(child, (x,y))
-                # if child.fit >= parent1.fit:
-                #     
-                # else:
-                #     children[(x,y)] = parent1
 
         #evaluate children
         with Pool(self._numprocs) as p:
             scores = p.starmap(Search.evaluate, evalpars)
-
         for s in scores:
             self.meanTime.append(s[1])
 
         #fill new grid
         newGrid = {}
-        for i, (pos, child) in enumerate(childrenList):
+        gridSnapShot = {}
+        for i, (pos, child, parentPos) in enumerate(childrenList):
             child.fit = scores[i][0]
-            self.check_best(child, pos)
+            self.check_best(child, pos, parentPos)
             parent = self.grid[pos]
             newGrid[pos] = child if child.fit >= parent.fit else parent
 
+            #save a bot
+            # child.save_json(f"{self._prefix}{os.sep}robot_{pos[0]}_{pos[1]}_gen{self.currentGen}.json",
+            #                 {"parent":parentPos})
+
+            #fill snapshotgrid if is to be saved
+            if self.currentGen % self._save_interval == 0:
+                key = f"({pos[0]},{pos[1]})"
+                gridSnapShot[key] = {"id": child.id,
+                                    "class": child.__class__.__name__,
+                                    "fit": child.fit,
+                                    "parent": parentPos,
+                                    "shape": child.shape.tolist()}
+        #save whole grid if is to be saved
+        if self.currentGen % self._save_interval == 0:
+            with open(f"{self._prefix}{os.sep}grid_gen{self.currentGen}.json", "w") as out_f:
+                json.dump(gridSnapShot, out_f, separators=(',', ':'))
+
+        #update current grid for next gen
         self.grid = newGrid
                     

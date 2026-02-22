@@ -6,10 +6,11 @@ from Generators.cga import CGA
 from types import SimpleNamespace
 import sys
 
-def main(world_type:str, robot_type:str, seed:int=7, sim_step:int=400, evo_step:int=400,
+def main(world_type:str, robot_type:str, save_interval:int=1, seed:int=7, sim_step:int=400, evo_step:int=400,
     search_algorithm:str='random', logdir:str="log", prefix:str='',
     numprocs:int=5, mut_chance: float=0.05, cga_grid_size:int=10, cga_toroid:bool=False):
     options = SimpleNamespace(
+        save_interval = save_interval,
         seed = seed,
         sim_step =  sim_step,
         evo_step = evo_step,
@@ -28,9 +29,10 @@ def main(world_type:str, robot_type:str, seed:int=7, sim_step:int=400, evo_step:
 
     if not os.path.exists(options.logdir):
         os.mkdir(options.logdir)
-
+        
     today  = time.strftime("%m%d%H%M")
     prefix = f"{options.logdir}{os.sep}{options.prefix}_{options.search_algorithm}_{today}"
+    os.makedirs(prefix, exist_ok=True)
 
     # Loading the world from a module (random) or file (fixed)
     if (args[0][-5:] == ".json"):
@@ -45,8 +47,8 @@ def main(world_type:str, robot_type:str, seed:int=7, sim_step:int=400, evo_step:
         print(f"Creating new world from module {args[0]}.")
         world_m = importlib.import_module("."+args[0], "world")
         world = world_m.get_random(rng=rng)
-        world.save_json(f"{prefix}_world.json")
-        world.world_file = f"{prefix}_world.json"
+        world.save_json(f"{prefix}{os.sep}_world.json")
+        world.world_file = f"{prefix}{os.sep}_world.json"
 
     # Loading robot from a module
     robot_m = importlib.import_module("."+args[1], "robot")
@@ -54,7 +56,10 @@ def main(world_type:str, robot_type:str, seed:int=7, sim_step:int=400, evo_step:
     if options.search_algorithm=="CGA":
         generator = CGA(robotModule=robot_m,
                         worldModule=world,
+                        save_interval=options.save_interval,
                         numprocs=options.numprocs,
+                        prefix=prefix,
+                        logdir=options.logdir,
                         sim_step=options.sim_step,
                         size=options.cga_grid_size,
                         maxGeneration=options.evo_step,
@@ -66,7 +71,7 @@ def main(world_type:str, robot_type:str, seed:int=7, sim_step:int=400, evo_step:
         generator.reset()
         for gen in range(options.evo_step):
             generator.update()
-            generator.save_grid(address="")
+            # generator.save_grid(address="")
         
         print(f"Simulation times, Gen {gen}: avg: {Search.mean(generator.meanTime)}, max: {max(generator.meanTime)}, min: {min(generator.meanTime)}")
 
