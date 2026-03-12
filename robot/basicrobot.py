@@ -16,8 +16,9 @@ class SinRobot:
     def __init__(self, rng=None):
         self.shape = np.array([[1]])
         self._rng = rng if rng is not None else np.random.default_rng()
-        self.fit = -9999
-        self.id=-1
+        # self.fit = -9999
+        self.fit = {}
+        self.id = -1
 
     def valid(self):
         return (is_connected(self.shape) and
@@ -26,7 +27,7 @@ class SinRobot:
     def save_json(self, filename:str, extra=None):
         if extra is None: extra = {}
         with open(filename, "w") as out_f:
-            data = {"class": __name__, "id":self.id,"shape": self.shape.tolist(), "fit":self.fit}
+            data = {"class": __name__, "id":self.id,"shape": self.shape.tolist(), "fitness":self.fit}
             data.update(extra)
             json.dump(data,
                       out_f,

@@ -1,10 +1,8 @@
 {
 "world_types": ["Walker_v0","BridgeWalker_v0"],
-"grid_worlds": [[0,0,0,1,1],
-                [0,0,1,1,1],
-                [0,0,0,1,1],
-                [0,0,1,1,1],
-                [0,0,0,1,1]],
+"grid_worlds": [[0,0,1],
+                [0,1,1],
+                [0,0,1]],
 "robot_type": "basicrobot",
 "save_interval": 50,
 "seed": 7,

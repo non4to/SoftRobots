@@ -88,8 +88,9 @@ class CGA():
         #fill grid
         gridSnapShot = {}
         for i, (pos, bot) in enumerate(botsList):
-            bot.fit = scores[i][0]
-            self.check_best(bot, pos, "None")
+            taskName = type(self._taskMap[pos]).__module__
+            bot.fit[taskName] = scores[i][0]
+            # self.check_best(bot, pos, "None")
             self.grid[pos] = bot 
             bot.pos = pos
 
@@ -109,31 +110,53 @@ class CGA():
         with open(f"{self._prefix}{os.sep}grid_taskMap.json", "w") as out_f2:
             json.dump(jsonTaskMap, out_f2, separators=(',', ':'))
 
-    def check_best(self, newrobot, pos, parentPos):
-        ####
-        if newrobot.fit > self._bestDict["fit"]:
-            self._bestDict["fit"] = newrobot.fit
-            self._bestDict["pos"] = pos
-            self._bestDict["robot"] = newrobot
-            print(f"New best found in Generation {self.currentGen} at {self._bestDict['pos']}: {self._bestDict['fit']}")
+    # def check_best(self, newrobot, pos, parentPos):
+    #     ####
+    #     if newrobot.fit > self._bestDict["fit"]:
+    #         self._bestDict["fit"] = newrobot.fit
+    #         self._bestDict["pos"] = pos
+    #         self._bestDict["robot"] = newrobot
+    #         print(f"New best found in Generation {self.currentGen} at {self._bestDict['pos']}: {self._bestDict['fit']}")
             
-            newrobot.save_json(f"{self._prefix}{os.sep}robot_{pos[0]}_{pos[1]}_gen{self.currentGen}.json",
-                            {"parent":parentPos})
-        ####
+    #         newrobot.save_json(f"{self._prefix}{os.sep}robot_{pos[0]}_{pos[1]}_gen{self.currentGen}.json",
+    #                         {"parent":parentPos})
+    #     ####
 
-    def select(self, neighbors: list[tuple[int,int]]) -> tuple[int,int]:
-        # bots = [self.grid[pos] for pos in neighbors]
-        # sortedBots = sorted(bots, key=lambda bot: bot.fit, reverse=True)
-        sortedNeighbors = sorted(neighbors, key=lambda pos: self.grid[pos].fit, reverse=True)
-        
+    def select(self, currentPos:tuple[int,int], neighbors: list[tuple[int,int]]) -> tuple[int,int]:
+        taskName = type(self._taskMap[currentPos]).__module__
+        toEvaluate = []
+        evalpars = []
+
+        #check if any neighbors need evaluation in current cell task
+        for pos in neighbors:
+            if taskName in self.grid[pos].fit: continue
+            else:
+                robot = self.grid[pos]
+                world = self._taskMap[currentPos]
+
+                toEvaluate.append((pos,robot))
+                evalpars.append((robot, world, self._sim_step))
+
+        #if any neighbors need evaluation in current cell task
+        if evalpars: 
+            with Pool(self._numprocs) as p:
+                scores = p.starmap(Search.evaluate, evalpars)
+            for s in scores:
+                self.meanTime.append(s[1])
+            
+            for i, (pos, robot) in enumerate(toEvaluate):
+                robot.fit[taskName] = scores[i][0]
+
+        #rank selection
+        sortedNeighbors = sorted(neighbors, key=lambda pos: self.grid[pos].fit[taskName], reverse=True)
+
         n = len(neighbors)
         weights = [1 / (2**i) for i in range(n)]
-        weights[-1] = weights[-2]/2
+        weights[-1] = weights[-2] / 2
         total = sum(weights)
-        weights = [w/total for w in weights]
-        
-        picked = self._random.choice(len(neighbors), p=weights)
+        weights = [w / total for w in weights]
 
+        picked = self._random.choice(len(neighbors), p=weights)
         return sortedNeighbors[picked]
     
     def update(self):        
@@ -147,7 +170,7 @@ class CGA():
             for x in range(self.cols):
                 parent1 = self.grid[(x,y)]
                 p1Neighbors = self.get_moore_neighbors(pos=(x,y))
-                parent2pos = self.select(neighbors=p1Neighbors)
+                parent2pos = self.select((x,y),neighbors=p1Neighbors)
                 parent2 = self.grid[parent2pos]
                 child = parent1.crossover(mate=parent2)
                 if self._random.random() <= self.mutationChance:
@@ -169,7 +192,7 @@ class CGA():
         gridSnapShot = {}
         for i, (pos, child, parentPos) in enumerate(childrenList):
             child.fit = scores[i][0]
-            self.check_best(child, pos, parentPos)
+            # self.check_best(child, pos, parentPos)
             parent = self.grid[pos]
             newGrid[pos] = child if child.fit >= parent.fit else parent
 
