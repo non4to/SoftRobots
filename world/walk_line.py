@@ -86,7 +86,6 @@ class LineWorld():
         self.robot = None
         self.world.remove_object("robot")
         
-
     def step(self):
         if self.sim is None:
             raise Exception("Can't step the world before .reset()'in it!")

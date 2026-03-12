@@ -6,10 +6,14 @@ from Generators.cga import CGA
 from types import SimpleNamespace
 import sys
 
-def main(world_type:str, robot_type:str, save_interval:int=1, seed:int=7, sim_step:int=400, evo_step:int=400,
-    search_algorithm:str='random', logdir:str="log", prefix:str='',
-    numprocs:int=5, mut_chance: float=0.05, cga_grid_size:int=10, cga_toroid:bool=False):
+STANDARD_GRID_WORLD = [[0,0],
+                        [0,0]]
+
+def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7, sim_step:int=400, evo_step:int=400,
+    search_algorithm:str='random', logdir:str="log", grid_worlds:list[list[int]]=STANDARD_GRID_WORLD,prefix:str='',
+    numprocs:int=5, mut_chance: float=0.05, cga_toroid:bool=False):
     options = SimpleNamespace(
+        grid_worlds = grid_worlds,
         save_interval = save_interval,
         seed = seed,
         sim_step =  sim_step,
@@ -19,10 +23,9 @@ def main(world_type:str, robot_type:str, save_interval:int=1, seed:int=7, sim_st
         prefix = prefix,
         numprocs = numprocs,
         mut_chance = mut_chance,
-        cga_grid_size = cga_grid_size,
         cga_toroid = cga_toroid)
     
-    args = [world_type, robot_type]
+    args = [world_types, robot_type]
     rng = np.random.default_rng(options.seed)
 
     # options, args = Search.parse_args()
@@ -34,34 +37,37 @@ def main(world_type:str, robot_type:str, save_interval:int=1, seed:int=7, sim_st
     prefix = f"{options.logdir}{os.sep}{options.prefix}_{options.search_algorithm}_{today}"
     os.makedirs(prefix, exist_ok=True)
 
-    # Loading the world from a module (random) or file (fixed)
-    if (args[0][-5:] == ".json"):
-        print(f"Loading world from file {args[0]}.")
-        with open(args[0], "r") as in_f:
-            _rdata = json.loads(in_f.read())
-            world_m = importlib.import_module(_rdata["class"])
-        world = world_m.get_fromfile(args[0])
-        world.world_file = args[0]
+    # # Loading the world from a module (random) or file (fixed)
+    # if (args[0][-5:] == ".json"):
+    #     print(f"Loading world from file {args[0]}.")
+    #     with open(args[0], "r") as in_f:
+    #         _rdata = json.loads(in_f.read())
+    #         world_m = importlib.import_module(_rdata["class"])
+    #     world = world_m.get_fromfile(args[0])
+    #     world.world_file = args[0]
 
-    else:
-        print(f"Creating new world from module {args[0]}.")
-        world_m = importlib.import_module("."+args[0], "world")
+    # else:
+    worlds = []
+    for world in world_types:
+        print(f"Creating new world from module {world}.")
+        world_m = importlib.import_module("."+world, "world")
         world = world_m.get_random(rng=rng)
         world.save_json(f"{prefix}{os.sep}_world.json")
         world.world_file = f"{prefix}{os.sep}_world.json"
+        worlds.append(world)
 
     # Loading robot from a module
     robot_m = importlib.import_module("."+args[1], "robot")
 
     if options.search_algorithm=="CGA":
         generator = CGA(robotModule=robot_m,
-                        worldModule=world,
+                        worldModules=worlds,
+                        gridWorlds=options.grid_worlds,
                         save_interval=options.save_interval,
                         numprocs=options.numprocs,
                         prefix=prefix,
                         logdir=options.logdir,
                         sim_step=options.sim_step,
-                        size=options.cga_grid_size,
                         maxGeneration=options.evo_step,
                         toroidal=options.cga_toroid,
                         mutationChance=options.mut_chance,

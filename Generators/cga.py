@@ -5,17 +5,18 @@ from multiprocessing import Pool
 from robot.basicrobot import SinRobot as Robot, get_random, get_fromfile
 
 class CGA():
-    def __init__(self, logdir, prefix, save_interval, numprocs, robotModule, worldModule, sim_step:int, size:int, maxGeneration:int, toroidal:bool=False, mutationChance:float = 0.05, rng: Optional[np.random.Generator]=None):
+    def __init__(self, logdir, prefix, save_interval, numprocs, robotModule, worldModules, sim_step:int, gridWorlds:list[list[int]], maxGeneration:int, toroidal:bool=False, mutationChance:float = 0.05, rng: Optional[np.random.Generator]=None):
         self._random = rng if rng is not None else np.random.default_rng()
         self._robot = robotModule
-        self._world = worldModule
+        self._worlds = worldModules
+        self._gridWorlds = gridWorlds
+        self.rows = len(self._gridWorlds) #assumes rectangle, always.
+        self.cols = len(self._gridWorlds[0])
         self._sim_step = sim_step
         self._numprocs = numprocs
         self._prefix = prefix
         self._logdir = logdir
         self._save_interval = save_interval
-        self.rows = size
-        self.cols = size
         self.toroidal = toroidal
         self.grid:dict[tuple[int,int],'Robot'] = {}
         self.lastGen = maxGeneration
@@ -26,8 +27,16 @@ class CGA():
         self.meanTime = []
 
         #Best Dict
-        self._bestDict = {"pos":(-1,-1), "fit":-1, "robot":None}    
-    
+        self._bestDict = {"pos":(-1,-1), "fit":-1, "robot":None}  
+        self.buildTaskMap()
+
+    def buildTaskMap(self):
+        self._taskMap = {}
+        for y in range(self.rows):
+            for x in range(self.cols):
+                index = self._gridWorlds[y][x]
+                self._taskMap[(x,y)] = self._worlds[index]
+
     def get_moore_neighbors(self, pos: tuple[int,int]) -> list[tuple[int,int]]:
         """Returns moore neighbors depending of [self.toroidal] value"""
         x = pos[0]
@@ -67,7 +76,7 @@ class CGA():
                 robot.id = self.robotCounter
                 self.robotCounter += 1
                 botsList.append(((x,y), robot))
-                evalpars.append((robot, self._world, self._sim_step))
+                evalpars.append((robot, self._taskMap[(x,y)], self._sim_step))
 
         #Evaluate bots
         with Pool(self._numprocs) as p:
@@ -93,6 +102,25 @@ class CGA():
         with open(f"{self._prefix}{os.sep}grid_startPop.json", "w") as out_f:
             json.dump(gridSnapShot, out_f, separators=(',', ':'))
 
+        jsonTaskMap = {}
+        for (x,y) in self._taskMap:
+            jsonTaskMap[f"({x},{y})"] = type(self._taskMap[(x,y)]).__module__
+
+        with open(f"{self._prefix}{os.sep}grid_taskMap.json", "w") as out_f2:
+            json.dump(jsonTaskMap, out_f2, separators=(',', ':'))
+
+    def check_best(self, newrobot, pos, parentPos):
+        ####
+        if newrobot.fit > self._bestDict["fit"]:
+            self._bestDict["fit"] = newrobot.fit
+            self._bestDict["pos"] = pos
+            self._bestDict["robot"] = newrobot
+            print(f"New best found in Generation {self.currentGen} at {self._bestDict['pos']}: {self._bestDict['fit']}")
+            
+            newrobot.save_json(f"{self._prefix}{os.sep}robot_{pos[0]}_{pos[1]}_gen{self.currentGen}.json",
+                            {"parent":parentPos})
+        ####
+
     def select(self, neighbors: list[tuple[int,int]]) -> tuple[int,int]:
         # bots = [self.grid[pos] for pos in neighbors]
         # sortedBots = sorted(bots, key=lambda bot: bot.fit, reverse=True)
@@ -106,21 +134,8 @@ class CGA():
         
         picked = self._random.choice(len(neighbors), p=weights)
 
-
         return sortedNeighbors[picked]
     
-    def check_best(self, newrobot, pos, parentPos):
-        ####
-        if newrobot.fit > self._bestDict["fit"]:
-            self._bestDict["fit"] = newrobot.fit
-            self._bestDict["pos"] = pos
-            self._bestDict["robot"] = newrobot
-            print(f"New best found in Generation {self.currentGen} at {self._bestDict['pos']}: {self._bestDict['fit']}")
-            
-            newrobot.save_json(f"{self._prefix}{os.sep}robot_{pos[0]}_{pos[1]}_gen{self.currentGen}.json",
-                            {"parent":parentPos})
-        ####
-
     def update(self):        
         self.currentGen += 1
         print(f"Gen: {self.currentGen}")
