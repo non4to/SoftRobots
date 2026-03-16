@@ -1,47 +1,97 @@
-# Yet Another Soft Robot Evolver
+# SoftRobots — Multi-Task Cellular Genetic Algorithm for Soft Robot Evolution
 
-This repository uses [Evolution Gym](https://evolutiongym.github.io)
-as a base to play with evolutionary computation algorithms and other
-weirder things.
+Research on evolving soft robot morphologies using **Quality-Diversity** algorithms
+in [Evolution Gym](https://evolutiongym.github.io). Built on top of [code](https://codeberg.org/caranha/YASRE)
+originally created by [Claus Aranha](https://conclave.cs.tsukuba.ac.jp) (University of Tsukuba).
 
-![](log/20230627_ES_trial02/ES_2_248.gif)
+---
 
-It can also be useful as a minimalist codebase to learn how to use
-evogym without having to worry about PPO and stuff.
+## Research Contribution
 
-## Files
-- `test/`: contains a script to test if your Evogym installation is working
+This fork expands the original one to consider two lines of research: Cellular Genetical Algorithms & Quality-Diversity / MAP-Elites
 
-- `docs/`: contains some documentation to learn about Evolutionary Computation
+**The key idea:** Instead of a single shared task, each region of the spatial grid is assigned a
+different EvoGym task. Robots are evaluated exclusively on their local task. The hypothesis is that
+*different tasks in a grid creates a preassure towards diversity*, producing robots with different bodies
+in different grid regions — without any explicit diversity objective.
 
-- `Search.py`: uses simple search algorithms to optimize the robot body 
-for a given task. Random Search, GA and ES are implemented. Use `python 
-Search.py -h` for options.
+```
+Grid (10×10 example):
 
-- `Visualize.py`: Visualizes the result of one robot running on one 
-world file (note: it does not need to be the same ones that ran together 
-originally!). Use `python Visualize -h` for options.
+  col 0-4           col 5-9
+┌──────────────┬─────────────────┐
+│   Walker     │  BridgeWalker   │  rows 0-4
+├──────────────┼─────────────────┤
+│   Walker     │  BridgeWalker   │  rows 5-9
+└──────────────┴─────────────────┘
 
-- `robot/`: Contains objects implementing evolving robots.
+Each cell holds one robot, evaluated on its region's task.
+Neighbor selection uses rank-based fitness of neighbors evaluated on the chosen cell's task.
+```
 
-- `world/`: COntains objects implementing worlds and tasks.
+### Design Decisions
 
-- `TODO.md`: hell.
+| Decision                                | Rationale                                                                                                |
+| -----------------------------------------| ----------------------------------------------------------------------------------------------------------|
+| Open-loop sine controller               | Evolution acts exclusively on the body (morphology); controller is fixed.                                |
+| Fitness cache per task                  | Controller is deterministic — same morphology + same world = same score, always.                         |
+| Spatial regions (not random assignment) | Creates smooth gradients at region boundaries, potentially producing generalist morphologies at borders. |
+---
 
-- `README.md`: guess.
+### `Generators/cga.py` — The Algorithm
 
-## How to Install:
-- Create a local python 3.10 environment using pyenv or similar
-- Install evogym: `pip install evogym --upgrade` (See evogym repository for details)
-- Install linux dependencies (for evogym): `sudo apt install xorg-dev libglu1-mesa-dev`
-- Install python dependencies (for evogym): `pip install glfw PyOpenGL ttkbootstrap` 
-- Install python dependencies (for this repo): `pip install pygifsicle imageio`
+The update cycle per generation:
 
-## How to use
-- python3 Search.py [world] [robot] [args]
-    - [world] -> must be inside world folder
-    - [robot] -> must be inside robot folder
-    - [args] -> use `python Search.py -h` for options.
+1. **For each cell `(x,y)`:** get Moore neighborhood (8 neighbors)
+2. **`select()`:** check fitness cache for each neighbor on the local task.
+   Evaluate uncached neighbors. Rank-select a parent using geometric weights.
+3. **Crossover + mutation** between cell occupant and selected neighbor
+4. **Evaluate child** on local task
+5. **Replace** cell occupant only if child fitness ≥ parent fitness (elitist)
+
+---
+
+## Usage
+
+### Run an experiment
+
+```bash
+python3 main.py
+# reads parameters.json — configure your experiment there
+```
+
+### Visualize a result
+
+```bash
+python3 Visualize.py log/<run_folder>/_world.json log/<run_folder>/robot_x_y_genN.json
+python3 Visualize.py log/<run_folder>/_world.json log/<run_folder>/robot_x_y_genN.json -S  # on screen
+```
+
+---
+
+## Robot Representation
+
+`SinRobot` is a 5×5 voxel grid with 5 possible voxel types:
+
+| Value | Type | Behavior |
+|---|---|---|
+| 0 | Empty | void |
+| 1 | Rigid | structural, no movement |
+| 2 | Soft | deformable, no actuation |
+| 3 | Horizontal Actuator | contracts/expands horizontally |
+| 4 | Vertical Actuator | contracts/expands vertically |
+
+Validity requires connectivity and at least one actuator (3 or 4).
+
+The controller is a **fixed open-loop sine wave** — actuation is a function of time only,
+with no sensor feedback. This means evolution acts purely on **morphology**.
+
+---
 
 ## About
-- This repository was created by [Claus Aranha](https://conclave.cs.tsukuba.ac.jp)
+
+**Fork author:** Felipe Nonato Cardoso Sobral Junior
+PhD Student, Evolutionary Computation Laboratory, University of Tsukuba
+[non4to.github.io](https://non4to.github.io) · [GitHub: non4to](https://github.com/non4to)
+
+**[Original repository](https://codeberg.org/caranha/YASRE):** [Claus Aranha](https://conclave.cs.tsukuba.ac.jp), University of Tsukuba 
