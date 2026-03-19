@@ -24,6 +24,7 @@ class CGA():
                         
         self.currentGen:int = 0
         self.robotCounter:int = 0
+        self._botsLog = f"{self._prefix}{os.sep}robots_log.jsonl"
         self.meanTime = []
 
         #Best Dict
@@ -66,6 +67,7 @@ class CGA():
     def reset(self) -> None:
         evalpars = []
         botsList = []
+        open(self._botsLog, "w").close()         # start bots log; all bots will be written here
 
         # os.makedirs(self._prefix, exist_ok=True)
 
@@ -73,8 +75,8 @@ class CGA():
         for y in range(self.rows):
             for x in range(self.cols):
                 robot = self._robot.get_random(rng=self._random)
-                robot.id = self.robotCounter
                 self.robotCounter += 1
+                robot.id = self.robotCounter
                 botsList.append(((x,y), robot))
                 evalpars.append((robot, self._taskMap[(x,y)], self._sim_step))
 
@@ -93,16 +95,14 @@ class CGA():
             # self.check_best(bot, pos, "None")
             self.grid[pos] = bot 
             bot.pos = pos
+            self.log_robot(robot=self.grid[pos], gen=self.currentGen, pos=pos)
 
-            key = f"({pos[0]},{pos[1]})"
-            gridSnapShot[key] = {"id": bot.id,
-                                "class": bot.__class__.__name__,
-                                "shape": bot.shape.tolist(),
-                                "parent": "None"}
+        # with open(f"{self._prefix}{os.sep}grid_startPop.json", "w") as out_f:
+        #     json.dump(gridSnapShot, out_f, separators=(',', ':'))
 
-        with open(f"{self._prefix}{os.sep}grid_startPop.json", "w") as out_f:
-            json.dump(gridSnapShot, out_f, separators=(',', ':'))
 
+
+        # log task map
         jsonTaskMap = {}
         for (x,y) in self._taskMap:
             jsonTaskMap[f"({x},{y})"] = type(self._taskMap[(x,y)]).__module__
@@ -110,17 +110,17 @@ class CGA():
         with open(f"{self._prefix}{os.sep}grid_taskMap.json", "w") as out_f2:
             json.dump(jsonTaskMap, out_f2, separators=(',', ':'))
 
-    # def check_best(self, newrobot, pos, parentPos):
-    #     ####
-    #     if newrobot.fit > self._bestDict["fit"]:
-    #         self._bestDict["fit"] = newrobot.fit
-    #         self._bestDict["pos"] = pos
-    #         self._bestDict["robot"] = newrobot
-    #         print(f"New best found in Generation {self.currentGen} at {self._bestDict['pos']}: {self._bestDict['fit']}")
-            
-    #         newrobot.save_json(f"{self._prefix}{os.sep}robot_{pos[0]}_{pos[1]}_gen{self.currentGen}.json",
-    #                         {"parent":parentPos})
-    #     ####
+    def log_robot(self, robot:"SinRobot", gen:int, pos:tuple[int,int], parent2id:int=-1):
+        entry = {
+            "id":      robot.id,
+            "gen":     gen,
+            "pos":     list(pos),
+            "fit":     robot.fit,
+            "parent2": parent2id,   # parent1 is the bot that occupied this position in the last gen
+            "shape":   robot.shape.tolist()
+        }
+        with open(self._botsLog, "a") as f:
+            f.write(json.dumps(entry) + "\n")
 
     def select(self, currentPos:tuple[int,int], neighbors: list[tuple[int,int]]) -> tuple[int,int]:
         taskName = type(self._taskMap[currentPos]).__module__
@@ -168,6 +168,7 @@ class CGA():
         #generate children
         for y in range(self.rows):
             for x in range(self.cols):
+                localWorld = self._taskMap[(x,y)]
                 parent1 = self.grid[(x,y)]
                 p1Neighbors = self.get_moore_neighbors(pos=(x,y))
                 parent2pos = self.select((x,y),neighbors=p1Neighbors)
@@ -175,11 +176,11 @@ class CGA():
                 child = parent1.crossover(mate=parent2)
                 if self._random.random() <= self.mutationChance:
                     child = child.mutate()
-
-                child.id = self.robotCounter
+                
                 self.robotCounter += 1
-                childrenList.append(((x,y), child, parent2pos))
-                evalpars.append((child, self._world, self._sim_step))
+                child.id = self.robotCounter
+                childrenList.append(((x,y), child, parent2.id))
+                evalpars.append((child, localWorld, self._sim_step))
 
         #evaluate children
         with Pool(self._numprocs) as p:
@@ -190,28 +191,15 @@ class CGA():
         #fill new grid
         newGrid = {}
         gridSnapShot = {}
-        for i, (pos, child, parentPos) in enumerate(childrenList):
-            child.fit = scores[i][0]
-            # self.check_best(child, pos, parentPos)
-            parent = self.grid[pos]
-            newGrid[pos] = child if child.fit >= parent.fit else parent
+        for i, (pos, child, parent2Id) in enumerate(childrenList):
+            taskName = type(self._taskMap[pos]).__module__
+            parent1 = self.grid[pos]
+            child.fit[taskName] = scores[i][0]
+            #set to new grid
+            newGrid[pos] = child if child.fit[taskName] >= parent1.fit[taskName] else parent1
 
-            #save a bot
-            # child.save_json(f"{self._prefix}{os.sep}robot_{pos[0]}_{pos[1]}_gen{self.currentGen}.json",
-            #                 {"parent":parentPos})
-
-            #fill snapshotgrid if is to be saved
-            if self.currentGen % self._save_interval == 0:
-                key = f"({pos[0]},{pos[1]})"
-                gridSnapShot[key] = {"id": child.id,
-                                    "class": child.__class__.__name__,
-                                    "fit": child.fit,
-                                    "parent": parentPos,
-                                    "shape": child.shape.tolist()}
-        #save whole grid if is to be saved
-        if self.currentGen % self._save_interval == 0:
-            with open(f"{self._prefix}{os.sep}grid_gen{self.currentGen}.json", "w") as out_f:
-                json.dump(gridSnapShot, out_f, separators=(',', ':'))
+            #save a bot in full log
+            self.log_robot(robot=newGrid[pos], gen=self.currentGen, pos=pos, parent2id=parent2Id)
 
         #update current grid for next gen
         self.grid = newGrid
