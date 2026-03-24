@@ -4,12 +4,12 @@ from multiprocessing import Pool
 from optparse import OptionParser
 from Generators.cga import CGA
 from types import SimpleNamespace
-import sys
+import sys, shutil
 
 STANDARD_GRID_WORLD = [[0,0],
                         [0,0]]
 
-def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7, sim_step:int=400, evo_step:int=400,
+def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7, sim_step:int=400, max_gen:int=400,
     search_algorithm:str='random', logdir:str="log", grid_worlds:list[list[int]]=STANDARD_GRID_WORLD,prefix:str='',
     numprocs:int=5, mut_chance: float=0.05, cga_toroid:bool=False):
     options = SimpleNamespace(
@@ -17,7 +17,7 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
         save_interval = save_interval,
         seed = seed,
         sim_step =  sim_step,
-        evo_step = evo_step,
+        max_gen = max_gen,
         search_algorithm = search_algorithm,
         logdir = logdir,
         prefix = prefix,
@@ -33,9 +33,11 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
     if not os.path.exists(options.logdir):
         os.mkdir(options.logdir)
         
+    startTime = time.time()
     today  = time.strftime("%m%d%H%M")
     prefix = f"{options.logdir}{os.sep}{options.prefix}_{options.search_algorithm}_{today}"
     os.makedirs(prefix, exist_ok=True)
+    shutil.copy("parameters.json", f"{prefix}{os.sep}parameters.json")
 
     # # Loading the world from a module (random) or file (fixed)
     # if (args[0][-5:] == ".json"):
@@ -68,14 +70,14 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
                         prefix=prefix,
                         logdir=options.logdir,
                         sim_step=options.sim_step,
-                        maxGeneration=options.evo_step,
+                        maxGeneration=options.max_gen,
                         toroidal=options.cga_toroid,
                         mutationChance=options.mut_chance,
                         rng=rng)
         #elif options.search_algorithm=="GA":
         ###
         generator.reset()
-        for gen in range(options.evo_step):
+        for gen in range(options.max_gen):
             generator.update()
             # generator.save_grid(address="")
         
@@ -91,6 +93,8 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
         simtime = algorithms[options.search_algorithm](robot_m, world, options, prefix, rng)
         print(f"Simulation times: avg: {Search.mean(simtime)}, max: {max(simtime)}, min: {min(simtime)}")
 
+    EndTime = time.time()
+    print(f"Execution took {EndTime - startTime}s")
     
     # if options.search_algorithm=="CGA":
 
