@@ -416,9 +416,7 @@ def hamming_distance(shape1: list, shape2: list) -> float:
 
 if __name__=="__main__":
     logdirs = [
-        "log/tests_CGA_03231821_toroid",
-        "log/tests_CGA_03231847_no_toroid",
-        "log/tests_CGA_03241446",
+        "log/tests_CGA_03261732"
     ]
 
     for logdir in logdirs:

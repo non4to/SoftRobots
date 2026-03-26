@@ -64,7 +64,7 @@ class CGA():
                     output.append((neighPosX,neighPosY))  
             return output
     
-    def hamming_distance(shape1: list, shape2: list) -> float:
+    def hamming_distance(self, shape1: list, shape2: list) -> float:
         A = np.array(shape1).flatten()
         B = np.array(shape2).flatten()
         
@@ -189,28 +189,38 @@ class CGA():
                 child.id = self.robotCounter
                 
                 #if child is equal to parent1, no need for evaluation. fitness will be the same! (because control is constant)
+                sameAsP1 = False
                 if self.hamming_distance(child.shape, parent1.shape) == 0:
-                    pass
-                
-                childrenList.append(((x,y), child, parent2.id))
-                evalpars.append((child, localWorld, self._sim_step))
+                    sameAsP1 = True
+                    child.fit = parent1.fit.copy()
+                    childrenList.append(((x,y), child, parent2.id, sameAsP1))
+                else:
+                    childrenList.append(((x,y), child, parent2.id, sameAsP1))
+                    evalpars.append((child, localWorld, self._sim_step))
 
-        #evaluate children
-        with Pool(self._numprocs) as p:
-            scores = p.starmap(Search.evaluate, evalpars)
-        for s in scores:
-            self.meanTime.append(s[1])
+        #evaluate children that need evaluation
+        if evalpars:
+            with Pool(self._numprocs) as p:
+                scores = p.starmap(Search.evaluate, evalpars)
+            for s in scores:
+                self.meanTime.append(s[1])
+            
+            #fill fit of evaluated children
+            scoreIdx = 0
+            for i, (pos, child, parent2Id, sameAsP1) in enumerate(childrenList):
+                if not(sameAsP1): #not the same, so it was evaluated
+                    taskName = type(self._taskMap[pos]).__module__
+                    child.fit[taskName] = scores[scoreIdx][0]
+                    scoreIdx += 1
 
         #fill new grid
         newGrid = {}
         gridSnapShot = {}
-        for i, (pos, child, parent2Id) in enumerate(childrenList):
+        for i, (pos, child, parent2Id, _) in enumerate(childrenList):
             taskName = type(self._taskMap[pos]).__module__
             parent1 = self.grid[pos]
-            child.fit[taskName] = scores[i][0]
-            #set to new grid
+            #set to new grid (child goes if fit is same or better than parent)
             newGrid[pos] = child if child.fit[taskName] >= parent1.fit[taskName] else parent1
-
             #save a bot in full log
             self.log_robot(robot=newGrid[pos], gen=self.currentGen, pos=pos, parent2id=parent2Id)
 
