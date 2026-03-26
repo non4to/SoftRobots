@@ -81,6 +81,7 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
             generator.update()
             # generator.save_grid(address="")
         
+        generator.evaluate_on_all_tasks()
         print(f"Simulation times, Gen {gen}: avg: {Search.mean(generator.meanTime)}, max: {max(generator.meanTime)}, min: {min(generator.meanTime)}")
 
     else:

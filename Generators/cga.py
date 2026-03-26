@@ -231,17 +231,47 @@ class CGA():
     def evaluate_on_all_tasks(self):
         """This function goes through all cells in [self.grid] and evaluates all robots in all tasks 
         (only the tasks the robot are missing)"""
-        taskNames = sorted(set(self._taskMap.values()))
-        worlds = {}
-        toEvaluate = []
-        evalpars = []
 
-        for y in range(self.rows):
-            for x in range(self.cols):
-                localWorld = self._taskMap[(x,y)]
-                localBot = self.grid[(x,y)]
+        #get world instances of all tasks with their names
+        taskNames = sorted(set(type(world).__module__ for world in self._taskMap.values()))
 
-                for task in taskNames:
-                    if task in localBot.fit: continue
-                    else:
-                        toEvaluate[task].append()
+        worldInstances = {}
+        for taskName in taskNames:
+            for pos, world in self._taskMap.items():
+                if type(world).__module__ == taskName:
+                    worldInstances[taskName] = world
+                    break
+
+        #group bots that need to be evaluated by task
+        toEvaluate = {}
+        for taskName in taskNames:
+            toEvaluate[taskName] = []
+
+        for pos, bot in self.grid.items():
+            for taskName in taskNames:
+                if taskName not in bot.fit:
+                    toEvaluate[taskName].append((bot, pos))
+
+        #evaluate bots 
+        for taskName in taskNames:
+            bots2Evaluate = toEvaluate[taskName]
+            if len(bots2Evaluate)==0: continue
+
+            evalpars = []
+            for bot, pos in bots2Evaluate:
+                world = worldInstances[taskName]
+                evalpars.append((bot, world, self._sim_step))
+
+            if evalpars:
+                with Pool(self._numprocs) as p:
+                    scores = p.starmap(Search.evaluate, evalpars)
+                for s in scores:
+                    self.meanTime.append(s[1])
+
+            #save scores in bots
+            # print("おろこびしょ")
+            for i,(bot, pos) in enumerate(toEvaluate[taskName]):
+                bot.fit[taskName] = scores[i][0]
+                self.log_robot(robot=bot, gen=99999, pos=pos)
+
+    
