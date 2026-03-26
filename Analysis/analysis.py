@@ -113,6 +113,7 @@ def build_hamming_distance_map(df: pd.DataFrame, rows:int, cols: int, toroid:boo
 
     return matrix, generations, matrix.max(), matrix.min()
 
+#TODO: Read this function and start creating the print one
 def build_global_hamming_distance_map(df: pd.DataFrame, rows:int, cols: int):
     """
     Builds a matrix of (gens, rows, cols) where each cell has the avg hamming distance value between all cells in the map.
@@ -153,7 +154,6 @@ def build_global_hamming_distance_map(df: pd.DataFrame, rows:int, cols: int):
         print(f"Missing values: {missing}")    
 
     return matrix, generations, matrix.max(), matrix.min()
-
 
 def build_fitness_map(df: pd.DataFrame, taskMap:dict, rows:int, cols: int):
     """
@@ -333,7 +333,7 @@ def print_hammming_map_gif(logdir:str, taskColors:str):
     for g_idx, gen in enumerate(hammGenerations):
         frame = render_generation_map(
             hammMatrix[g_idx], overlayMatrix, taskNames,
-            hammMatrixMIN, hammMatrixMAX, gen, taskColors, "Avg hamming distance to neighbors")
+            0, 1, gen, taskColors, "Avg hamming distance to neighbors")
         frames.append(frame)
         
         # if g_idx % 10 == 0:
@@ -408,7 +408,7 @@ def hamming_distance(shape1: list, shape2: list) -> float:
     A = np.array(shape1).flatten()
     B = np.array(shape2).flatten()
     
-    maxDist = max(A.size, B.size)
+    maxDist = max(A.size, B.size) #A and B MUST have the same size!
     dist = np.sum(A != B)
     return dist/maxDist
 
@@ -416,28 +416,28 @@ def hamming_distance(shape1: list, shape2: list) -> float:
 
 if __name__=="__main__":
     logdirs = [
+        "log/tests_CGA_03231821_toroid",
+        "log/tests_CGA_03231847_no_toroid",
         "log/tests_CGA_03241446",
-        "log/tests_CGA_03241623",
-        "log/tests_CGA_03241712",
     ]
 
-    # for logdir in logdirs:
-    #     print_actuators_map_gif(logdir=logdir, taskColors=["black","green"])
-    #     print_hammming_map_gif(logdir=logdir, taskColors=["black","green"])
-    #     print_fitness_map_gif(logdir=logdir, taskColors=["black","green"])
+    for logdir in logdirs:
+        print_actuators_map_gif(logdir=logdir, taskColors=["black","green"])
+        print_hammming_map_gif(logdir=logdir, taskColors=["black","green"])
+        print_fitness_map_gif(logdir=logdir, taskColors=["black","green"])
 
     #---------------------------
-    df, taskMap, gridSize = load_log(logdirs[0])
+    # df, taskMap, gridSize = load_log(logdirs[0])
 
-    rows, cols = gridSize
-    build_fitness_map(df, taskMap, rows, cols)
+    # rows, cols = gridSize
+    # build_fitness_map(df, taskMap, rows, cols)
 
-    newCols = df["shape"].apply(count_blocks).apply(pd.Series)
-    df = pd.concat([df, newCols], axis=1)
-    globalHammMatrix, globalHammGenerations, globalHammMatrixMIN, globalHammMatrixMAX = build_global_hamming_distance_map(df, rows, cols)
+    # newCols = df["shape"].apply(count_blocks).apply(pd.Series)
+    # df = pd.concat([df, newCols], axis=1)
+    # globalHammMatrix, globalHammGenerations, globalHammMatrixMIN, globalHammMatrixMAX = build_global_hamming_distance_map(df, rows, cols)
 
-    # hammMatrix, hammGenerations, hammMatrixMIN, hammMatrixMAX = build_hamming_distance_map(df, rows, cols, False)
-    # print(hammMatrix[99])
+    # # hammMatrix, hammGenerations, hammMatrixMIN, hammMatrixMAX = build_hamming_distance_map(df, rows, cols, False)
+    # # print(hammMatrix[99])
 
 
 

@@ -49,8 +49,8 @@ class CGA():
                 for j in [-1, 0, 1]:
                     if i == 0 and j == 0: continue
                     # Apply Toroidal effect
-                    neighPosX = (x + i) % self.rows
-                    neighPosY = (y + j) % self.cols
+                    neighPosX = (x + i) % self.cols
+                    neighPosY = (y + j) % self.rows
                     output.append((neighPosX,neighPosY))
             return output
         else:
@@ -60,10 +60,18 @@ class CGA():
                     if i==0 and j==0: continue
                     neighPosX, neighPosY = x+i, y+j
                     if (neighPosX < 0 or neighPosY < 0): continue
-                    elif (neighPosX > self.rows-1 or neighPosY > self.cols-1): continue
+                    elif (neighPosX > self.cols-1 or neighPosY > self.rows-1): continue
                     output.append((neighPosX,neighPosY))  
             return output
     
+    def hamming_distance(shape1: list, shape2: list) -> float:
+        A = np.array(shape1).flatten()
+        B = np.array(shape2).flatten()
+        
+        maxDist = max(A.size, B.size) #A and B MUST have the same size!
+        dist = np.sum(A != B)
+        return dist/maxDist
+
     def reset(self) -> None:
         evalpars = []
         botsList = []
@@ -179,6 +187,11 @@ class CGA():
                 
                 self.robotCounter += 1
                 child.id = self.robotCounter
+                
+                #if child is equal to parent1, no need for evaluation. fitness will be the same! (because control is constant)
+                if self.hamming_distance(child.shape, parent1.shape) == 0:
+                    pass
+                
                 childrenList.append(((x,y), child, parent2.id))
                 evalpars.append((child, localWorld, self._sim_step))
 
@@ -203,4 +216,22 @@ class CGA():
 
         #update current grid for next gen
         self.grid = newGrid
-                    
+
+    #TODO: Still need to test this   
+    def evaluate_on_all_tasks(self):
+        """This function goes through all cells in [self.grid] and evaluates all robots in all tasks 
+        (only the tasks the robot are missing)"""
+        taskNames = sorted(set(self._taskMap.values()))
+        worlds = {}
+        toEvaluate = []
+        evalpars = []
+
+        for y in range(self.rows):
+            for x in range(self.cols):
+                localWorld = self._taskMap[(x,y)]
+                localBot = self.grid[(x,y)]
+
+                for task in taskNames:
+                    if task in localBot.fit: continue
+                    else:
+                        toEvaluate[task].append()

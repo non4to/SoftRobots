@@ -1,25 +1,17 @@
 {
 "world_types": ["Walker_v0","BridgeWalker_v0"],
-"grid_worlds": [[1,1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1,1],
-                [1,1,1,1,1,1,1,1,1,1]
+"grid_worlds": [[1,1],
+                [1,1]
             ],
 "robot_type": "basicrobot",
 "save_interval": -1,
 "seed": 7,
 "sim_step": 400,
-"max_gen": 200,
+"max_gen": 100,
 "search_algorithm": "CGA",
 "logdir": "log",
 "prefix": "tests",
-"numprocs": 12,
+"numprocs": 10,
 "mut_chance": 0.05,
 "cga_toroid": false
 }
