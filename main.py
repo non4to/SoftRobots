@@ -35,7 +35,7 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
         
     startTime = time.time()
     today  = time.strftime("%m%d%H%M")
-    prefix = f"{options.logdir}{os.sep}{options.prefix}_{options.search_algorithm}_{today}"
+    prefix = f"{options.logdir}{os.sep}{options.prefix}_seed{options.seed}_{options.search_algorithm}_{today}"
     os.makedirs(prefix, exist_ok=True)
     shutil.copy("parameters.json", f"{prefix}{os.sep}parameters.json")
 
@@ -95,7 +95,8 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
         print(f"Simulation times: avg: {Search.mean(simtime)}, max: {max(simtime)}, min: {min(simtime)}")
 
     EndTime = time.time()
-    print(f"Execution took {EndTime - startTime}s")
+    elapsed = EndTime - startTime
+    print(f"\n✅ Seed {options.seed} finished in {elapsed:.2f}seconds ({elapsed/3600:.2f}h)\n")
     
     # if options.search_algorithm=="CGA":
 
@@ -104,4 +105,18 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
 if __name__ == "__main__":
     with open('parameters.json', 'r') as f:
         params = json.load(f)       
-    main(**params)
+
+    seeds2Run = [7, 49, 343, 2401, 16807]
+    
+    print(f"\n{'='*80}")
+    print(f"スタート {len(seeds2Run)} SEEDS")
+    print(f"Seeds: {seeds2Run}")
+    print(f"{'='*80}\n")
+
+    for seed in seeds2Run:
+        print(f"\n{'='*80}")
+        print(f"Current Seed: {seed}")
+        print(f"{'='*80}\n")
+
+        params["seed"] = seed
+        main(**params)

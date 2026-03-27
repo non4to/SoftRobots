@@ -169,7 +169,7 @@ class CGA():
     
     def update(self):        
         self.currentGen += 1
-        print(f"Gen: {self.currentGen}")
+        if self.currentGen%50==0: print(f"Gen: {self.currentGen}")
         childrenList = []
         evalpars = []
 

@@ -276,7 +276,7 @@ def render_generation_map(
     plt.close(fig)
     return frame
 
-def print_actuators_map_gif(logdir:str, taskColors:str):
+def print_actuators_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
     """
     Generates gif of all generation's heatmap considering the amount of actuators in each robot.
     Returns gif to the folder given by logdir."""
@@ -297,20 +297,23 @@ def print_actuators_map_gif(logdir:str, taskColors:str):
     
     #starts to build gif
     for g_idx, gen in enumerate(generations):
-        frame = render_generation_map(
-            matrix[g_idx], overlayMatrix, taskNames,
-            minValue, maxValue, gen, taskColors, "Number of Actuators")
-        frames.append(frame)
+        isLastGen = (g_idx == len(generations) - 1)
+        if (gen % frameInterval == 0) or isLastGen:
+            frame = render_generation_map(
+                matrix[g_idx], overlayMatrix, taskNames,
+                minValue, maxValue, gen, taskColors, "Number of Actuators",
+                figSize=(8,8))
+            frames.append(frame)
         
-        # if g_idx % 10 == 0:
-        #     print(f"Frame {g_idx}/{len(generations)} gerado...")
+            if g_idx % 10 == 0:
+                print(f"Frame {g_idx}/{len(generations)} gerado...")
 
     # Salva o GIF
     output_path = os.path.join(logdir, "heatmap_actuators.gif")
     imageio.mimsave(output_path, frames, duration=150)  # 150ms por frame
     print(f"GIF salved in: {output_path}")
 
-def print_hammming_map_gif(logdir:str, taskColors:str):
+def print_hammming_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
     """
     Generates gif of all generation's heatmap considering the hammming distance of a cell to its neighbors
     Returns gif to the folder given by logdir."""
@@ -331,20 +334,23 @@ def print_hammming_map_gif(logdir:str, taskColors:str):
     
     #starts to build gif
     for g_idx, gen in enumerate(hammGenerations):
-        frame = render_generation_map(
-            hammMatrix[g_idx], overlayMatrix, taskNames,
-            0, 1, gen, taskColors, "Avg hamming distance to neighbors")
-        frames.append(frame)
+        isLastGen = (g_idx == len(hammGenerations) - 1)
+        if (gen % frameInterval == 0) or isLastGen:
+            frame = render_generation_map(
+                hammMatrix[g_idx], overlayMatrix, taskNames,
+                0, 1, gen, taskColors, "Avg hamming distance to neighbors",
+                figSize=(8,8))
+            frames.append(frame)
         
-        # if g_idx % 10 == 0:
-        #     print(f"Frame {g_idx}/{len(hammGenerations)} gerado...")
+            if g_idx % 10 == 0:
+                print(f"Frame {g_idx}/{len(hammGenerations)} gerado...")
 
     # Salva o GIF
     output_path = os.path.join(logdir, "hammingDistance_fromNeighbors.gif")
     imageio.mimsave(output_path, frames, duration=150)  # 150ms por frame
     print(f"GIF salved in: {output_path}")
 
-def print_fitness_map_gif(logdir:str, taskColors:str):
+def print_fitness_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
     """
     Generates gif of all generation's heatmap considering the fitness of the bot in its own task.
     Returns gif to the folder given by logdir."""
@@ -365,13 +371,16 @@ def print_fitness_map_gif(logdir:str, taskColors:str):
 
     #starts to build gif
     for g_idx, gen in enumerate(generations):
-        frame = render_generation_map(
-            matrix[g_idx], overlayMatrix, taskNames,
-            0, 1, gen, taskColors, "Fitness on local task")
-        frames.append(frame)
-        
-        # if g_idx % 10 == 0:
-        #     print(f"Frame {g_idx}/{len(generations)} gerado...")
+        isLastGen = (g_idx == len(generations) - 1)
+        if (gen % frameInterval == 0) or isLastGen:
+            frame = render_generation_map(
+                matrix[g_idx], overlayMatrix, taskNames,
+                0, 1, gen, taskColors, "Fitness on local task",
+                figSize=(8,8))
+            frames.append(frame)
+            
+            if g_idx % 10 == 0:
+                print(f"Frame {g_idx}/{len(generations)} gerado...")
 
     # Salva o GIF
     output_path = os.path.join(logdir, "heatmap_fitness.gif")
@@ -416,13 +425,13 @@ def hamming_distance(shape1: list, shape2: list) -> float:
 
 if __name__=="__main__":
     logdirs = [
-        "log/tests_CGA_03261732"
+        "log/baseline-walkerv0_CGA_03270518"
     ]
 
     for logdir in logdirs:
-        print_actuators_map_gif(logdir=logdir, taskColors=["black","green"])
-        print_hammming_map_gif(logdir=logdir, taskColors=["black","green"])
-        print_fitness_map_gif(logdir=logdir, taskColors=["black","green"])
+        # print_actuators_map_gif(logdir=logdir, taskColors=["black","green"])
+        print_hammming_map_gif(logdir=logdir, taskColors=["black","green"], frameInterval=5)
+        print_fitness_map_gif(logdir=logdir, taskColors=["black","green"], frameInterval=5)
 
     #---------------------------
     # df, taskMap, gridSize = load_log(logdirs[0])

@@ -15,7 +15,7 @@
 "save_interval": -1,
 "seed": 7,
 "sim_step": 400,
-"max_gen": 1000,
+"max_gen": 500,
 "search_algorithm": "CGA",
 "logdir": "log",
 "prefix": "baseline-walkerv0",
