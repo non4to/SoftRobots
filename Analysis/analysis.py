@@ -26,6 +26,18 @@ def load_log(logdir: str):
     cols = max(x for x, y in positions) + 1
     rows = max(y for x, y in positions) + 1
 
+    #adjust generations: there is a group in the end with gen = 99999. these robots were evaluated on tasks they didnt perform during the algorithm. this is just to identify them
+    #this code puts their fitness in the corresponding robot in the final generation
+    realGens = df[df["gen"] != 99999]["gen"].unique()
+    lastRealGen = max(realGens)
+    extraEvals = df[df["gen"] == 99999][["id", "fit", "pos"]].set_index("id")
+
+    for botId, extraFit in extraEvals["fit"].items():
+        mask = (df["id"] == botId) & (df["gen"] == lastRealGen)
+        if mask.any():
+            df.loc[mask, "fit"] = df.loc[mask, "fit"].apply(lambda x: {**x, **extraFit})
+    
+    df = df[df["gen"] != 99999]
     return df, taskMap, (rows, cols)
 
 def count_blocks(shape: list) -> dict:
@@ -276,18 +288,18 @@ def render_generation_map(
     plt.close(fig)
     return frame
 
-def print_actuators_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
+def print_actuators_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, taskColors:str, frameInterval:int=5, frameDuration:float=300):
     """
     Generates gif of all generation's heatmap considering the amount of actuators in each robot.
     Returns gif to the folder given by logdir."""
 
-    #creates dataframe
-    df, taskMap, gridSize = load_log(logdir)
-    rows, cols = gridSize
+    # #creates dataframe
+    # df, taskMap, gridSize = load_log(logdir)
+    # rows, cols = gridSize
 
-    #adds columns describing each robot
-    newCols = df["shape"].apply(count_blocks).apply(pd.Series)
-    df = pd.concat([df, newCols], axis=1)
+    # #adds columns describing each robot
+    # newCols = df["shape"].apply(count_blocks).apply(pd.Series)
+    # df = pd.concat([df, newCols], axis=1)
 
     #builds actuators maps
     matrix, generations, maxValue, minValue = build_actuator_maps(df, rows, cols)
@@ -296,6 +308,7 @@ def print_actuators_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
     frames = []
     
     #starts to build gif
+    print(f"Working on {logdir}...")
     for g_idx, gen in enumerate(generations):
         isLastGen = (g_idx == len(generations) - 1)
         if (gen % frameInterval == 0) or isLastGen:
@@ -305,26 +318,26 @@ def print_actuators_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
                 figSize=(8,8))
             frames.append(frame)
         
-            if g_idx % 10 == 0:
-                print(f"Frame {g_idx}/{len(generations)} gerado...")
+            # if g_idx % 10 == 0:
+            #     print(f"Frame {g_idx}/{len(generations)} gerado...")
 
     # Salva o GIF
     output_path = os.path.join(logdir, "heatmap_actuators.gif")
-    imageio.mimsave(output_path, frames, duration=150)  # 150ms por frame
+    imageio.mimsave(output_path, frames, duration=frameDuration)  # frameDurationms por frame
     print(f"GIF salved in: {output_path}")
 
-def print_hammming_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
+def print_hammming_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, taskColors:str, frameInterval:int=5, frameDuration:float=300):
     """
     Generates gif of all generation's heatmap considering the hammming distance of a cell to its neighbors
     Returns gif to the folder given by logdir."""
 
-    #creates dataframe
-    df, taskMap, gridSize = load_log(logdir)
-    rows, cols = gridSize
+    # #creates dataframe
+    # df, taskMap, gridSize = load_log(logdir)
+    # rows, cols = gridSize
 
-    #adds columns describing each robot
-    newCols = df["shape"].apply(count_blocks).apply(pd.Series)
-    df = pd.concat([df, newCols], axis=1)
+    # #adds columns describing each robot
+    # newCols = df["shape"].apply(count_blocks).apply(pd.Series)
+    # df = pd.concat([df, newCols], axis=1)
 
     #builds hamming distance map
     hammMatrix, hammGenerations, hammMatrixMIN, hammMatrixMAX = build_hamming_distance_map(df, rows, cols, False)
@@ -333,6 +346,7 @@ def print_hammming_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
     frames = []
     
     #starts to build gif
+    print(f"Working on {logdir}...")
     for g_idx, gen in enumerate(hammGenerations):
         isLastGen = (g_idx == len(hammGenerations) - 1)
         if (gen % frameInterval == 0) or isLastGen:
@@ -342,26 +356,26 @@ def print_hammming_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
                 figSize=(8,8))
             frames.append(frame)
         
-            if g_idx % 10 == 0:
-                print(f"Frame {g_idx}/{len(hammGenerations)} gerado...")
+            # if g_idx % 10 == 0:
+            #     print(f"Frame {g_idx}/{len(hammGenerations)} gerado...")
 
     # Salva o GIF
     output_path = os.path.join(logdir, "hammingDistance_fromNeighbors.gif")
-    imageio.mimsave(output_path, frames, duration=150)  # 150ms por frame
+    imageio.mimsave(output_path, frames, duration=frameDuration)  # frameDuration ms por frame
     print(f"GIF salved in: {output_path}")
 
-def print_fitness_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
+def print_fitness_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, taskColors:str, frameInterval:int=5, frameDuration:float=300):
     """
     Generates gif of all generation's heatmap considering the fitness of the bot in its own task.
     Returns gif to the folder given by logdir."""
 
-    #creates dataframe
-    df, taskMap, gridSize = load_log(logdir)
-    rows, cols = gridSize
+    # #creates dataframe
+    # df, taskMap, gridSize = load_log(logdir)
+    # rows, cols = gridSize
 
-    #adds columns describing each robot
-    newCols = df["shape"].apply(count_blocks).apply(pd.Series)
-    df = pd.concat([df, newCols], axis=1)
+    # #adds columns describing each robot
+    # newCols = df["shape"].apply(count_blocks).apply(pd.Series)
+    # df = pd.concat([df, newCols], axis=1)
 
     #builds fitness map
     matrix, generations, minmaxDict = build_fitness_map(df, taskMap, rows, cols)
@@ -370,6 +384,7 @@ def print_fitness_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
     frames = []
 
     #starts to build gif
+    print(f"Working on {logdir}...")
     for g_idx, gen in enumerate(generations):
         isLastGen = (g_idx == len(generations) - 1)
         if (gen % frameInterval == 0) or isLastGen:
@@ -379,12 +394,12 @@ def print_fitness_map_gif(logdir:str, taskColors:str, frameInterval:int=5):
                 figSize=(8,8))
             frames.append(frame)
             
-            if g_idx % 10 == 0:
-                print(f"Frame {g_idx}/{len(generations)} gerado...")
+            # if g_idx % 10 == 0:
+            #     print(f"Frame {g_idx}/{len(generations)} gerado...")
 
     # Salva o GIF
     output_path = os.path.join(logdir, "heatmap_fitness.gif")
-    imageio.mimsave(output_path, frames, duration=150)  # 150ms por frame
+    imageio.mimsave(output_path, frames, duration=frameDuration)  # frameDuration ms por frame
     print(f"GIF salved in: {output_path}")
 
 def get_moore_neighbors(pos: tuple[int,int], rows:int, cols:int, toroidal:bool) -> list[tuple[int,int]]:
@@ -425,13 +440,37 @@ def hamming_distance(shape1: list, shape2: list) -> float:
 
 if __name__=="__main__":
     logdirs = [
-        "log/baseline-walkerv0_CGA_03270518"
+        # "log/baseline-walkerv0_seed7_CGA_03271207",
+        # "log/baseline-walkerv0_seed49_CGA_03271327",
+        # "log/baseline-walkerv0_seed343_CGA_03271447",
+        # "log/baseline-walkerv0_seed2401_CGA_03271611",
+        # "log/baseline-walkerv0_seed16807_CGA_03271729",
+        # "log/baseline-BridgeWalker_v0_seed7_CGA_03272353",
+        # "log/baseline-BridgeWalker_v0_seed49_CGA_03280249",
+        # "log/baseline-BridgeWalker_v0_seed343_CGA_03280548",
+        # "log/baseline-BridgeWalker_v0_seed2401_CGA_03280851",
+        # "log/baseline-BridgeWalker_v0_seed16807_CGA_03281201",
+        "log/quadrant-BridgeWalker_v0_seed7_CGA_03281508"
     ]
 
-    for logdir in logdirs:
-        # print_actuators_map_gif(logdir=logdir, taskColors=["black","green"])
-        print_hammming_map_gif(logdir=logdir, taskColors=["black","green"], frameInterval=5)
-        print_fitness_map_gif(logdir=logdir, taskColors=["black","green"], frameInterval=5)
+    for i, logdir in enumerate(logdirs):
+        #prepare dfs
+        df, taskMap, gridSize = load_log(logdir)
+        rows, cols = gridSize
+        #adds columns describing each robot
+        newCols = df["shape"].apply(count_blocks).apply(pd.Series)
+        df = pd.concat([df, newCols], axis=1)
+        
+        #get images
+        print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskColors=["black","green"], frameInterval=100, frameDuration=300)
+        print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskColors=["black","green"], frameInterval=100, frameDuration=300)
+
+
+
+    # for logdir in logdirs:
+        # # print_actuators_map_gif(logdir=logdir, taskColors=["black","green"])
+        # print_hammming_map_gif(logdir=logdir, taskColors=["black","green"], frameInterval=5)
+        # print_fitness_map_gif(logdir=logdir, taskColors=["black","green"], frameInterval=5)
 
     #---------------------------
     # df, taskMap, gridSize = load_log(logdirs[0])
