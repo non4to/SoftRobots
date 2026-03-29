@@ -2,6 +2,7 @@ import pandas as pd, numpy as np
 import json, os, imageio
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.patches import FancyArrowPatch
 
 def load_log(logdir: str):
     """logdir: Log's root folder
@@ -51,6 +52,15 @@ def count_blocks(shape: list) -> dict:
     blocks["actuators"] = blocks["h_act"] + blocks["v_act"]
     blocks["n_blocks"]  = blocks["rigid"] + blocks["soft"] + blocks["h_act"] + blocks["v_act"]
     return blocks
+
+def get_directional_hamming_distances(referencePos:tuple[int,int], shapeMap:dict, rows:int, columns:int, toroidal:bool=False) -> dict:
+    """Returns a dict where the keys are the position of neighbors of [referencePos] and the content is the hamming distance between them"""
+    outputDict = {}
+    neighbors = get_moore_neighbors(referencePos, rows, columns, toroidal)
+    for neighbor in neighbors:
+        if neighbor not in outputDict: outputDict[neighbor] = 0
+        outputDict[neighbor] = hamming_distance(shape1=shapeMap[referencePos], shape2=shapeMap[neighbor])
+    return outputDict
 
 def build_actuator_maps(df: pd.DataFrame, rows:int, cols:int):
     """
@@ -166,6 +176,30 @@ def build_global_hamming_distance_map(df: pd.DataFrame, rows:int, cols: int):
         print(f"Missing values: {missing}")    
 
     return matrix, generations, matrix.max(), matrix.min()
+
+def build_directional_hamming_map(df: pd.DataFrame, rows:int, cols: int, toroid:bool=False):
+    #grabs all present generations
+    generations = sorted(df["gen"].unique())
+    n_gens = len(generations)
+    #starts matrix with -1 to indicate stuff that was not found in dataframe
+    matrix = np.full((n_gens, rows, cols), fill_value=-1, dtype=dict)
+
+    #iterates throught generations and builds matrix
+    for gen in generations:
+        #get robots of this gen
+        genBots = df[df["gen"]==gen]
+        #build a dict to quick access (faster than filtering dataframe each line)
+        shapeMap = {row["pos"]: row["shape"] for _, row in genBots.iterrows()}
+        neighborDistMap = {row["pos"]: {} for _, row in genBots.iterrows()}
+
+        for _, row in genBots.iterrows():
+            #for each bot in the generation
+            pos = row["pos"]
+            matrix[gen, pos[1], pos[0]] = get_directional_hamming_distances(pos, shapeMap, rows, cols, toroid)
+         
+    missing = np.sum(matrix == -1)
+    if missing > 0: print("Missing values in matrix!")
+    return matrix, generations
 
 def build_fitness_map(df: pd.DataFrame, taskMap:dict, rows:int, cols: int):
     """
@@ -288,7 +322,103 @@ def render_generation_map(
     plt.close(fig)
     return frame
 
-def print_actuators_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, taskColors:str, frameInterval:int=5, frameDuration:float=300):
+def render_hamming_direction_map(
+    fitnessMatrix: np.ndarray, #output of build_fitness_map
+    fitMinValue: float,
+    fitMaxValue: float,        #min and max value of targetMatrix, used for heatmap.
+    directionalMatrix: np.ndarray, #output of build_directional_hamming_map
+    taskMatrix: np.ndarray,   #matrix that indicates which task is in which cell
+    taskNames: list,          #task names in the correct order - indexes here indicate tasks in taskMatrix
+    gen: int,                 #generation of this map
+    taskColors: list[str],    #colors of each task in taskNames (for rectangle) 
+    legendText: str,          #text that appears beside legends
+    figSize: tuple = (10,10) ) -> np.ndarray:
+
+    plt.close("all")
+    rows, cols = directionalMatrix.shape
+    fig, ax = plt.subplots(figsize = figSize)
+
+    #set heatmap with max and min values
+    im = ax.imshow(
+        fitnessMatrix,
+        cmap='summer',
+        vmin=fitMinValue,
+        vmax=fitMaxValue,
+        aspect="equal"
+    )
+
+    #set limits
+    ax.set_xlim(-0.5, cols - 0.5)
+    ax.set_ylim(rows - 0.5, -0.5)
+    ax.set_aspect('equal')
+
+    #draw lines
+    for y in range(rows):
+        for x in range(cols):
+            neighDict = directionalMatrix[y, x]
+            # if neighDict is None or isinstance(neighDict, float): continue
+            #to each cell neighbor
+            for (neighX, neighY), hamming in neighDict.items():
+                # if hamming is None or hamming < 0: continue
+                # alpha = 1 - hamming # hamming = 0 -> the same! the more equal, the less transparent
+                # linewidth = 0.5 + (1.0 - hamming) * 5  
+                if hamming < 0.25:
+                    alpha = 1.0
+                    linewidth = 10
+                elif hamming < 0.5:
+                    alpha = 0.4
+                    linewidth = 5
+                elif hamming < 0.75:
+                    alpha = 0.1
+                    linewidth = 3
+                else:
+                    continue 
+                
+                x_end = x + (neighX - x) * 0.45
+                y_end = y + (neighY - y) * 0.45
+
+                ax.plot([x, x_end], [y, y_end],
+                        color='black', alpha=alpha, linewidth=linewidth,
+                        solid_capstyle='round')
+    
+    #draw task borders
+    for y in range(rows):
+        for x in range(cols):
+            taskIndex = taskMatrix[y, x]
+            color = taskColors[taskIndex]
+            
+            rect = patches.Rectangle(
+                (x - 0.5, y - 0.5), 
+                1, 1,                  
+                linewidth=3,
+                edgecolor=color,
+                facecolor="none")
+            ax.add_patch(rect)
+
+    #color bar and title
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label(legendText, fontsize=10)
+
+    #task subtitles
+    legendElements = [
+        patches.Patch(edgecolor=taskColors[i], facecolor="none",
+                      linewidth=3, label=taskNames[i].split(".")[-1])
+        for i in range(len(taskNames))]
+    ax.legend(handles=legendElements, loc="upper left",
+              bbox_to_anchor=(1.15, 1.0), fontsize=9)
+
+    #render
+    ax.set_title(f"Generation {gen}", fontsize=13)
+    ax.axis("off")
+    
+    fig.tight_layout()
+    fig.canvas.draw()
+    frame = np.asarray(fig.canvas.buffer_rgba())
+    frame = frame[:, :, :3]  # RGB apenas
+    plt.close(fig)
+    return frame
+
+def print_actuators_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, taskMap:dict, taskColors:str, frameInterval:int=5, frameDuration:float=300):
     """
     Generates gif of all generation's heatmap considering the amount of actuators in each robot.
     Returns gif to the folder given by logdir."""
@@ -326,7 +456,7 @@ def print_actuators_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, tas
     imageio.mimsave(output_path, frames, duration=frameDuration)  # frameDurationms por frame
     print(f"GIF salved in: {output_path}")
 
-def print_hammming_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, taskColors:str, frameInterval:int=5, frameDuration:float=300):
+def print_hammming_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, taskMap:dict, taskColors:str, frameInterval:int=5, frameDuration:float=300):
     """
     Generates gif of all generation's heatmap considering the hammming distance of a cell to its neighbors
     Returns gif to the folder given by logdir."""
@@ -364,7 +494,39 @@ def print_hammming_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, task
     imageio.mimsave(output_path, frames, duration=frameDuration)  # frameDuration ms por frame
     print(f"GIF salved in: {output_path}")
 
-def print_fitness_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, taskColors:str, frameInterval:int=5, frameDuration:float=300):
+def print_directional_hammming_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, taskMap:dict, taskColors:str, frameInterval:int=5, frameDuration:float=300):
+    """
+    Generates gif of all generation's heatmap considering the hammming distance of a cell to its neighbors, indicating to which cell theyre the most similar to
+    Returns gif to the folder given by logdir."""
+
+    dirHammMatrix, dirHammGenerations = build_directional_hamming_map(df, rows, cols, False)
+    fitnessMatrix, generations, minmaxDict = build_fitness_map(df, taskMap, rows, cols)
+    overlayMatrix, taskNames = build_task_overlay(taskMap,rows,cols)
+    plt.close("all")
+    frames = []
+
+    #starts to build gif
+    print(f"Working on {logdir}...")
+    for g_idx, gen in enumerate(dirHammGenerations):
+        isLastGen = (g_idx == len(dirHammGenerations) - 1)
+        if (gen % frameInterval == 0) or isLastGen:
+            frame = render_hamming_direction_map(
+                fitnessMatrix=fitnessMatrix[g_idx], fitMinValue=0, fitMaxValue=1,
+                directionalMatrix=dirHammMatrix[g_idx], 
+                taskMatrix=overlayMatrix, taskNames=taskNames,
+                gen=gen, taskColors=taskColors, legendText="Hamming Distance",
+                figSize=(8,8))
+            frames.append(frame)
+        
+            # if g_idx % 10 == 0:
+            #     print(f"Frame {g_idx}/{len(hammGenerations)} gerado...")
+
+    # Salva o GIF
+    output_path = os.path.join(logdir, "directionalHammingDistance_fromNeighbors.gif")
+    imageio.mimsave(output_path, frames, duration=frameDuration)  # frameDuration ms por frame
+    print(f"GIF salved in: {output_path}")
+
+def print_fitness_map_gif(logdir:str, df:pd.DataFrame, rows:int, cols:int, taskMap:dict, taskColors:str, frameInterval:int=5, frameDuration:float=300):
     """
     Generates gif of all generation's heatmap considering the fitness of the bot in its own task.
     Returns gif to the folder given by logdir."""
@@ -440,18 +602,23 @@ def hamming_distance(shape1: list, shape2: list) -> float:
 
 if __name__=="__main__":
     logdirs = [
-        # "log/baseline-walkerv0_seed7_CGA_03271207",
-        # "log/baseline-walkerv0_seed49_CGA_03271327",
-        # "log/baseline-walkerv0_seed343_CGA_03271447",
-        # "log/baseline-walkerv0_seed2401_CGA_03271611",
-        # "log/baseline-walkerv0_seed16807_CGA_03271729",
-        # "log/baseline-BridgeWalker_v0_seed7_CGA_03272353",
-        # "log/baseline-BridgeWalker_v0_seed49_CGA_03280249",
-        # "log/baseline-BridgeWalker_v0_seed343_CGA_03280548",
-        # "log/baseline-BridgeWalker_v0_seed2401_CGA_03280851",
-        # "log/baseline-BridgeWalker_v0_seed16807_CGA_03281201",
-        "log/quadrant-BridgeWalker_v0_seed7_CGA_03281508"
-    ]
+    # "log/baseline-walkerv0_seed7_CGA_03271207",
+    # "log/baseline-walkerv0_seed49_CGA_03271327",
+    # "log/baseline-walkerv0_seed343_CGA_03271447",
+    # "log/baseline-walkerv0_seed2401_CGA_03271611",
+    # "log/baseline-walkerv0_seed16807_CGA_03271729",
+    # "log/baseline-BridgeWalker_v0_seed7_CGA_03272353",
+    # "log/baseline-BridgeWalker_v0_seed49_CGA_03280249",
+    # "log/baseline-BridgeWalker_v0_seed343_CGA_03280548",
+    # "log/baseline-BridgeWalker_v0_seed2401_CGA_03280851",
+    # "log/baseline-BridgeWalker_v0_seed16807_CGA_03281201",
+    # "log/quadrantv0_seed7_CGA_03281508",
+    # "log/quadrantv0_seed49_CGA_03281719",
+    # "log/quadrantv0_seed343_CGA_03281922",
+    # "log/quadrantv0_seed2401_CGA_03282134",
+    # "log/quadrantv0_seed16807_CGA_03282354",
+    "log/testingAnalysis_v0_seed7_CGA_03291530"
+]
 
     for i, logdir in enumerate(logdirs):
         #prepare dfs
@@ -462,28 +629,17 @@ if __name__=="__main__":
         df = pd.concat([df, newCols], axis=1)
         
         #get images
-        print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskColors=["black","green"], frameInterval=100, frameDuration=300)
-        print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskColors=["black","green"], frameInterval=100, frameDuration=300)
-
-
-
-    # for logdir in logdirs:
-        # # print_actuators_map_gif(logdir=logdir, taskColors=["black","green"])
-        # print_hammming_map_gif(logdir=logdir, taskColors=["black","green"], frameInterval=5)
-        # print_fitness_map_gif(logdir=logdir, taskColors=["black","green"], frameInterval=5)
-
+        # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["black","green"], frameInterval=5, frameDuration=300)
+        print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["black","green"], frameInterval=50, frameDuration=300)
+        # print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["black","green"], frameInterval=50, frameDuration=300)
     #---------------------------
-    # df, taskMap, gridSize = load_log(logdirs[0])
 
-    # rows, cols = gridSize
-    # build_fitness_map(df, taskMap, rows, cols)
 
-    # newCols = df["shape"].apply(count_blocks).apply(pd.Series)
-    # df = pd.concat([df, newCols], axis=1)
-    # globalHammMatrix, globalHammGenerations, globalHammMatrixMIN, globalHammMatrixMAX = build_global_hamming_distance_map(df, rows, cols)
 
-    # # hammMatrix, hammGenerations, hammMatrixMIN, hammMatrixMAX = build_hamming_distance_map(df, rows, cols, False)
-    # # print(hammMatrix[99])
+
+
+
+
 
 
 
