@@ -1,8 +1,21 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pandas as pd, numpy as np
-import json, os, imageio
+import json, imageio, importlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.patches import FancyArrowPatch
+from pygifsicle import optimize
+
+
+hatching_patterns = {
+    0: '   ',     
+    1: '/////',      
+    2: '|||',    
+    3: '***',    
+    4: '---',
+}
 
 def load_log(logdir: str):
     """logdir: Log's root folder
@@ -279,6 +292,8 @@ def render_generation_map(
     #print borders for different tasks
     for y in range(rows):
         for x in range(cols):
+
+
             taskIndex = taskMatrix[y, x]
             color = taskColors[taskIndex]
             
@@ -352,7 +367,7 @@ def render_hamming_direction_map(
     ax.set_ylim(rows - 0.5, -0.5)
     ax.set_aspect('equal')
 
-    #draw lines
+    #draw hamming lines
     for y in range(rows):
         for x in range(cols):
             neighDict = directionalMatrix[y, x]
@@ -361,19 +376,7 @@ def render_hamming_direction_map(
             for (neighX, neighY), hamming in neighDict.items():
                 # if hamming is None or hamming < 0: continue
                 alpha = 1 - hamming # hamming = 0 -> the same! the more equal, the less transparent
-                linewidth = 0.5 + (1.0 - hamming) * 7 
-                # if hamming < 0.25:
-                #     alpha = 1.0
-                #     linewidth = 10
-                # elif hamming < 0.5:
-                #     alpha = 0.4
-                #     linewidth = 5
-                # elif hamming < 0.75:
-                #     alpha = 0.1
-                #     linewidth = 3
-                # else:
-                #     continue 
-                
+                linewidth = 0.5 + (1.0 - hamming) * 7                 
                 x_end = x + (neighX - x) * 0.4
                 y_end = y + (neighY - y) * 0.4
 
@@ -385,14 +388,15 @@ def render_hamming_direction_map(
     for y in range(rows):
         for x in range(cols):
             taskIndex = taskMatrix[y, x]
-            color = taskColors[taskIndex]
-            
+            pattern = hatching_patterns.get(taskIndex, '')
             rect = patches.Rectangle(
-                (x - 0.5, y - 0.5), 
-                1, 1,                  
-                linewidth=5,
-                edgecolor=color,
-                facecolor="none")
+            (x - 0.5, y - 0.5), 
+            0.99, 0.99,                  
+            linewidth=1,
+            edgecolor='black',
+            facecolor='none',
+            hatch=pattern,
+            alpha=0.4)
             ax.add_patch(rect)
 
     #color bar and title
@@ -401,11 +405,13 @@ def render_hamming_direction_map(
 
     #task subtitles
     legendElements = [
-        patches.Patch(edgecolor=taskColors[i], facecolor="none",
-                      linewidth=3, label=taskNames[i].split(".")[-1])
+        patches.Patch(hatch=hatching_patterns.get(i, ''),
+        facecolor="white",
+        edgecolor="black", linewidth=1,
+        label=taskNames[i].split(".")[-1])
         for i in range(len(taskNames))]
     ax.legend(handles=legendElements, loc="upper left",
-              bbox_to_anchor=(1.15, 1.0), fontsize=9)
+              bbox_to_anchor=(1.25, 1.0), fontsize=9)
 
     #render
     ax.set_title(f"Generation {gen}", fontsize=13)
@@ -598,7 +604,57 @@ def hamming_distance(shape1: list, shape2: list) -> float:
     dist = np.sum(A != B)
     return dist/maxDist
 
+def print_bot(logdir:str, df:pd.DataFrame, rows:int, cols:int, gen:int, pos:tuple[int,int]):
+    #Creates folder if it doesnt exist
+    outputPath = os.path.join(logdir, "printedBots")
+    os.makedirs(outputPath, exist_ok=True)
 
+    #load parameters
+    with open(os.path.join(logdir, 'parameters.json'), 'r') as f:
+        params = json.load(f)  
+    
+    botType = params["robot_type"]
+    worldTypes = params["world_types"]
+    gridWorlds = params["grid_worlds"]
+    simSteps = params["sim_step"]
+
+    #get bot from df
+    mask = (df["gen"]==gen) & (df["pos"]==pos)
+    if not mask.any():
+        print("Didn't find that bot!")
+        return
+    
+    botRow = df[mask].iloc[0]
+    botShape = np.array(botRow["shape"])
+    
+    #load modules
+    robotModule = importlib.import_module(f"robot.{botType}")
+    worldIndex = gridWorlds[pos[1]][pos[0]]
+    worldType = worldTypes[worldIndex]
+    worldModule = importlib.import_module(f"world.{worldType}")
+
+    #make bot and world
+    bot = robotModule.SinRobot()
+    bot.shape = botShape
+    world = worldModule.get_world()
+
+    #simulate and render
+    world.set_robot(bot)
+    world.reset()
+    viewer = world.get_viewer()
+    frames = []
+    for step in range(simSteps):
+        world.step()
+        frames.append(viewer.render(mode="img"))
+
+    outputfile = os.path.join(outputPath, 
+                              f"gen{gen}_pos{pos[0]}-{pos[1]}.gif")
+    imageio.mimsave(outputfile, frames, duration=20)
+    optimize(outputfile)
+    
+    score = world.get_score()
+    print(f"Score: {score}")
+    print(f"GIF saved in: {outputfile}")
 
 if __name__=="__main__":
     logdirs = [
@@ -630,9 +686,17 @@ if __name__=="__main__":
         df = pd.concat([df, newCols], axis=1)
         
         #get images
-        print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-        print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-        print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(0,0))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(1,0))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(2,0))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(3,0))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(4,0))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(5,0))
+
+
+        # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        # print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        # print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
     #---------------------------
 
 
