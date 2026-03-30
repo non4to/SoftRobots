@@ -341,7 +341,7 @@ def render_hamming_direction_map(
     #set heatmap with max and min values
     im = ax.imshow(
         fitnessMatrix,
-        cmap='summer',
+        cmap='bwr',
         vmin=fitMinValue,
         vmax=fitMaxValue,
         aspect="equal"
@@ -360,22 +360,22 @@ def render_hamming_direction_map(
             #to each cell neighbor
             for (neighX, neighY), hamming in neighDict.items():
                 # if hamming is None or hamming < 0: continue
-                # alpha = 1 - hamming # hamming = 0 -> the same! the more equal, the less transparent
-                # linewidth = 0.5 + (1.0 - hamming) * 5  
-                if hamming < 0.25:
-                    alpha = 1.0
-                    linewidth = 10
-                elif hamming < 0.5:
-                    alpha = 0.4
-                    linewidth = 5
-                elif hamming < 0.75:
-                    alpha = 0.1
-                    linewidth = 3
-                else:
-                    continue 
+                alpha = 1 - hamming # hamming = 0 -> the same! the more equal, the less transparent
+                linewidth = 0.5 + (1.0 - hamming) * 7 
+                # if hamming < 0.25:
+                #     alpha = 1.0
+                #     linewidth = 10
+                # elif hamming < 0.5:
+                #     alpha = 0.4
+                #     linewidth = 5
+                # elif hamming < 0.75:
+                #     alpha = 0.1
+                #     linewidth = 3
+                # else:
+                #     continue 
                 
-                x_end = x + (neighX - x) * 0.45
-                y_end = y + (neighY - y) * 0.45
+                x_end = x + (neighX - x) * 0.4
+                y_end = y + (neighY - y) * 0.4
 
                 ax.plot([x, x_end], [y, y_end],
                         color='black', alpha=alpha, linewidth=linewidth,
@@ -390,7 +390,7 @@ def render_hamming_direction_map(
             rect = patches.Rectangle(
                 (x - 0.5, y - 0.5), 
                 1, 1,                  
-                linewidth=3,
+                linewidth=5,
                 edgecolor=color,
                 facecolor="none")
             ax.add_patch(rect)
@@ -514,7 +514,7 @@ def print_directional_hammming_map_gif(logdir:str, df:pd.DataFrame, rows:int, co
                 fitnessMatrix=fitnessMatrix[g_idx], fitMinValue=0, fitMaxValue=1,
                 directionalMatrix=dirHammMatrix[g_idx], 
                 taskMatrix=overlayMatrix, taskNames=taskNames,
-                gen=gen, taskColors=taskColors, legendText="Hamming Distance",
+                gen=gen, taskColors=taskColors, legendText="Proportional Fitness",
                 figSize=(8,8))
             frames.append(frame)
         
@@ -617,7 +617,8 @@ if __name__=="__main__":
     # "log/quadrantv0_seed343_CGA_03281922",
     # "log/quadrantv0_seed2401_CGA_03282134",
     # "log/quadrantv0_seed16807_CGA_03282354",
-    "log/testingAnalysis_v0_seed7_CGA_03291530"
+    # "log/testingAnalysis_v0_seed7_CGA_03291530"
+    "log/tests_CGA_03231847_no_toroid"
 ]
 
     for i, logdir in enumerate(logdirs):
@@ -629,9 +630,9 @@ if __name__=="__main__":
         df = pd.concat([df, newCols], axis=1)
         
         #get images
-        # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["black","green"], frameInterval=5, frameDuration=300)
-        print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["black","green"], frameInterval=50, frameDuration=300)
-        # print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["black","green"], frameInterval=50, frameDuration=300)
+        print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
     #---------------------------
 
 
