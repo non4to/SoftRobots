@@ -10,7 +10,7 @@ from pygifsicle import optimize
 
 
 hatching_patterns = {
-    0: '   ',     
+    0: '',     
     1: '/////',      
     2: '|||',    
     3: '***',    
@@ -559,7 +559,8 @@ def render_hamming_direction_map(
             #to each cell neighbor
             for (neighX, neighY), hamming in neighDict.items():
                 # if hamming is None or hamming < 0: continue
-                alpha = 1 - hamming # hamming = 0 -> the same! the more equal, the less transparent
+                alpha = 1 - hamming - 0.25 # hamming = 0 -> the same! the more equal, the less transparent
+                if alpha < 0: alpha = 0 
                 linewidth = 0.5 + (1.0 - hamming) * 7                 
                 x_end = x + (neighX - x) * 0.4
                 y_end = y + (neighY - y) * 0.4
@@ -907,13 +908,13 @@ if __name__=="__main__":
     # "log/baseline-BridgeWalker_v0_seed343_CGA_03280548",
     # "log/baseline-BridgeWalker_v0_seed2401_CGA_03280851",
     # "log/baseline-BridgeWalker_v0_seed16807_CGA_03281201",
-    # "log/quadrantv0_seed7_CGA_03281508",
+    "log/quadrantv0_seed7_CGA_03281508",
     # "log/quadrantv0_seed49_CGA_03281719",
     # "log/quadrantv0_seed343_CGA_03281922",
     # "log/quadrantv0_seed2401_CGA_03282134",
     # "log/quadrantv0_seed16807_CGA_03282354",
     # "log/testingAnalysis_v0_seed7_CGA_03291530"
-    "log/tests_CGA_03231847_no_toroid"
+
 ]
 
     for i, logdir in enumerate(logdirs):
@@ -925,30 +926,29 @@ if __name__=="__main__":
         df = pd.concat([df, newCols], axis=1)
         
         #get images
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(0,0))
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(1,0))
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(2,0))
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(3,0))
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(4,0))
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(5,0))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(0,0))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(1,0))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,3))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(5,3))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
 
-        data = build_fitness_data(df=df, taskMap=taskMap)
-        data2 = build_hamming_data(df=df, taskMap=taskMap)
-        data3 = build_fit_scatter_data (df=df, taskMap=taskMap)
+        # data = build_fitness_data(df=df, taskMap=taskMap)
+        # data2 = build_hamming_data(df=df, taskMap=taskMap)
+        # # data3 = build_fit_scatter_data (df=df, taskMap=taskMap)
 
 
-        print(data2["global"]["x"][:20])  # verifica se as gerações são consecutivas
-        print_line_graph(data=data, logdir=logdir, 
-                         title="Average proportional fitness value (related to maximum found in each task)", 
-                         xLabel="Generation", 
-                         yLabel="Avg. proportional fitness",
-                         )
+        # print_line_graph(data=data, logdir=logdir, 
+        #                  title="Average proportional fitness value (related to maximum found in each task)", 
+        #                  xLabel="Generation", 
+        #                  yLabel="Avg. proportional fitness",
+        #                  )
 
-        print_line_graph(data=data2, logdir=logdir, 
-                         title="Average hamming global and per task hamming distance", 
-                         xLabel="Generation", 
-                         yLabel="Avg. Hamming distance",
-                         )
+        # print_line_graph(data=data2, logdir=logdir, 
+        #                  title="Average hamming global and per task hamming distance", 
+        #                  xLabel="Generation", 
+        #                  yLabel="Avg. Hamming distance",
+        #                  )
 
 
         # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
