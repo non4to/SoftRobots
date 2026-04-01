@@ -107,7 +107,8 @@ if __name__ == "__main__":
         params = json.load(f)       
 
     # seeds2Run = [7, 49, 343, 2401, 16807] #first seeds to run
-    seeds2Run2 = [8, 64, 512, 4096, 32768] #second seeds that run
+    # seeds2Run2 = [8, 64, 512, 4096, 32768] #second seeds that run
+    seeds2Run2 = [7]
     
     print(f"\n{'='*80}")
     print(f"スタート {len(seeds2Run2)} SEEDS")

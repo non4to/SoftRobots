@@ -2,7 +2,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd, numpy as np
-import json, imageio, importlib
+import json, imageio, importlib, statistics
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.patches import FancyArrowPatch
@@ -189,6 +189,190 @@ def build_global_hamming_distance_map(df: pd.DataFrame, rows:int, cols: int):
         print(f"Missing values: {missing}")    
 
     return matrix, generations, matrix.max(), matrix.min()
+
+def build_fitness_data(df: pd.DataFrame, taskMap:dict) -> dict:
+    """
+    Reads the robots log dataframe and builds one dataset per task.
+    Each dataset contains the mean fitness and std deviation per generation.
+
+    Returns a list of dicts with format:
+        {
+            "label": str,        # task name (short)
+            "x": list[int],      # generation indices
+            "y": list[float],    # mean fitness per generation
+            "std": list[float],  # std deviation per generation
+        }
+    """
+    # lista com todas as gerações
+    # para cada geração, passar por cada celular e pegar o valor de fitness da task daquela célula e colocar numa lista.
+    # tirar média e desvio padrão
+    generations = sorted(df["gen"].unique())
+    uniqueTasks = list(set(taskMap.values()))
+    minmaxDict = {task: {"min": 7777777, "max": -7777777} for task in uniqueTasks}
+    output = {}
+    for task in uniqueTasks:
+        if task not in output: output[task] = {}
+        output[task]["label"] = task.split(".")[1]
+        output[task]["x"] = []
+        output[task]["y"] = []
+        output[task]["std"] = []    
+
+    #gets the min and max value of fitness in each task
+    for task in uniqueTasks:
+        all_fits = df['fit'].apply(lambda x: x.get(task, np.nan)).dropna()
+        minmaxDict[task] = {
+            "min": all_fits.min(),
+            "max": all_fits.max()
+        }
+
+    for genIdx, gen in enumerate(generations):
+        genBots = df[df["gen"]==gen]
+        valueList = {}
+
+        for _, row in genBots.iterrows():
+            x, y = row["pos"]
+            pos = f"({x},{y})"
+            taskName = taskMap[pos]
+            if taskName not in valueList: valueList[taskName] = []
+            fitValue = row['fit'][taskName]
+            normFit = (fitValue - minmaxDict[taskName]["min"]) / (minmaxDict[taskName]["max"] - minmaxDict[taskName]["min"])
+            valueList[taskName].append(normFit)
+
+        for task in output:
+            avgValue = np.mean(valueList[task])
+            stdValue = np.std(valueList[task])
+
+            output[task]["x"].append(gen)
+            output[task]["y"].append(avgValue)
+            output[task]["std"].append(stdValue)
+    return output    
+
+def build_hamming_data (df: pd.DataFrame, taskMap: dict) -> dict:
+    """
+    Reads the robots log dataframe and builds a dataset of hamming distance per gen
+    Each dataset contains the mean fitness and std deviation per generation.
+
+    Returns a list of dicts with format:
+        {
+            "label": str,        # 
+            "x": list[int],      # generation indices
+            "y": list[float],    # mean fitness per generation
+            "std": list[float],  # std deviation per generation
+        }
+    """
+    generations = sorted(df["gen"].unique())
+    uniqueTasks = list(set(taskMap.values()))
+
+    output = {"global": {"label": "global", "x": [], "y": [], "std": []}}
+    for task in uniqueTasks:
+        if task not in output: output[task] = {}
+        output[task]["label"] = task.split(".")[1]
+        output[task]["x"] = []
+        output[task]["y"] = []
+        output[task]["std"] = []    
+
+    for genIdx, gen in enumerate(generations):
+        genBots = df[df["gen"]==gen]
+        shapeMap = {row["pos"]: row["shape"] for _, row in genBots.iterrows()}
+        taskGroups = {task: [] for task in uniqueTasks}
+
+        #separate bots by task
+        for _, row in genBots.iterrows():
+            x, y   = row["pos"]
+            posKey = f"({x},{y})"
+            taskGroups[taskMap[posKey]].append(row["pos"])
+
+        #get hamming by task
+        for task in uniqueTasks:
+            positions = taskGroups[task]
+            distances = []
+
+            for i in range(len(positions)):
+                for j in range(i+1, len(positions)): #compare inside same task, where i!=j, and only once (ij=ji)
+                   bot1 = shapeMap[positions[i]]
+                   bot2 = shapeMap[positions[j]]
+                   dist = hamming_distance(bot1,bot2)
+                   distances.append(dist)
+
+            avgDist = np.mean(distances)
+            stdDist = np.std(distances)
+            output[task]["x"].append(gen)
+            output[task]["y"].append(avgDist)
+            output[task]["std"].append(stdDist)
+
+        #global hamming
+        allPositions = list(shapeMap.keys())
+        globalDistances = []
+        for i in range(len(allPositions)):
+            for j in range(i + 1, len(allPositions)):
+                bot1 = shapeMap[allPositions[i]]
+                bot2 = shapeMap[allPositions[j]]
+                dist = hamming_distance(bot1,bot2)
+                distances.append(dist)
+
+        avgDist = np.mean(distances)
+        stdDist = np.std(distances)
+        output["global"]["x"].append(gen)
+        output["global"]["y"].append(avgDist)
+        output["global"]["std"].append(stdDist)
+
+    return output
+
+def build_fit_scatter_data (df: pd.DataFrame, taskMap: dict) -> dict:
+    """
+    Uses the final generation data (which includes cross-task evaluations
+    merged by load_log) to analyze specialist vs generalist robots.
+
+    Returns:
+        {
+            "tasks": [taskA, taskB],        # sorted task names
+            "robots": [
+                {
+                    "pos":       (x, y),
+                    "localTask": str,        # task assigned to this cell
+                    "fitA":      float,      # normalized fitness on taskA
+                    "fitB":      float,      # normalized fitness on taskB
+                    "delta":     float,      # |fitA - fitB| specialization score
+                },
+                ...
+            ]
+        }
+    """
+    uniqueTasks = sorted(set(taskMap.values()))
+    lastGen     = df["gen"].max()
+    lastBots    = df[df["gen"] == lastGen]
+
+    minmaxDict = {}
+    for task in uniqueTasks:
+        all_fits = df["fit"].apply(lambda x: x.get(task, np.nan)).dropna()
+        minmaxDict[task] = {"min": all_fits.min(), "max": all_fits.max()}
+
+    def normalize(value, task):
+        lo, hi = minmaxDict[task]["min"], minmaxDict[task]["max"]
+        return (value - lo) / (hi - lo) if hi != lo else 0.0
+
+    robots = []
+    for _, row in lastBots.iterrows():
+        x, y = row["pos"]
+        pos = f"({x},{y})"
+        taskName = taskMap[pos]
+        fitValue = row['fit']
+
+        for task in uniqueTasks:
+            pass
+
+        fitA      = normalize(row["fit"].get(uniqueTasks[0], 0.0), uniqueTasks[0])
+        fitB      = normalize(row["fit"].get(uniqueTasks[1], 0.0), uniqueTasks[1])
+
+        robots.append({
+            "pos":       (x, y),
+            "localTask": localTask,
+            "fitA":      fitA,
+            "fitB":      fitB,
+            "delta":     abs(fitA - fitB),
+        })
+
+    return {"tasks": uniqueTasks, "robots": robots}
 
 def build_directional_hamming_map(df: pd.DataFrame, rows:int, cols: int, toroid:bool=False):
     #grabs all present generations
@@ -656,6 +840,61 @@ def print_bot(logdir:str, df:pd.DataFrame, rows:int, cols:int, gen:int, pos:tupl
     print(f"Score: {score}")
     print(f"GIF saved in: {outputfile}")
 
+def print_line_graph(data:dict, logdir:str, 
+                     title:str="Title", 
+                     xLabel:str="X", 
+                     yLabel:str="Y", 
+                     figsize:tuple=(8,8),
+                     colors:list[str]=["red","blue","purple","pink"]):
+    """
+    Renders a line chart from a list of datasets.
+
+    Each dataset dict must follow this format:
+        {
+            "label": str,           # legend label
+            "x": list[int],         # x-axis values (generations)
+            "y": list[float],       # y-axis values (e.g. mean fitness)
+            "std": list[float],     # (optional) std deviation for shaded band
+        }
+    """
+    outputPath = os.path.join(logdir, "Graphs")
+    os.makedirs(outputPath, exist_ok=True)
+
+    plt.close("all")
+    fig, ax = plt.subplots(figsize=figsize)
+
+    for idx, (taskName, ds) in enumerate(data.items()):      
+        color = colors[idx]
+        x = ds["x"]
+        y = ds["y"]
+        std = ds["std"]
+        label = ds.get("label", f"missingLabel{idx}")
+        
+        ax.plot(x, y, color=color, label=label, linewidth=2)
+
+        yArr = np.array(y)
+        stdArr = np.array(std)
+        ax.fill_between(x, 
+                        yArr-stdArr,
+                        yArr+stdArr,
+                        color=color,
+                        alpha=0.2,
+                        linewidth=0,
+                        )
+        
+        ax.set_title(title, fontsize=14)
+        ax.set_xlabel(xLabel,fontsize=12)
+        ax.set_ylabel(yLabel,fontsize=12)
+        ax.legend(fontsize=10)
+        ax.grid(True, linestyle="--", alpha=1)
+        ax.set_xlim(0, max(ds["x"][-1] for _, ds in data.items()))
+        ax.set_ylim(0, 1)
+
+        fig.tight_layout()
+        fig.savefig(f"{outputPath}/{title}", dpi=150)
+    plt.close(fig)
+
+
 if __name__=="__main__":
     logdirs = [
     # "log/baseline-walkerv0_seed7_CGA_03271207",
@@ -686,12 +925,30 @@ if __name__=="__main__":
         df = pd.concat([df, newCols], axis=1)
         
         #get images
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(0,0))
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(1,0))
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(2,0))
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(3,0))
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(4,0))
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(5,0))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(0,0))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(1,0))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(2,0))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(3,0))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(4,0))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=100, pos=(5,0))
+
+        data = build_fitness_data(df=df, taskMap=taskMap)
+        data2 = build_hamming_data(df=df, taskMap=taskMap)
+        data3 = build_fit_scatter_data (df=df, taskMap=taskMap)
+
+
+        print(data2["global"]["x"][:20])  # verifica se as gerações são consecutivas
+        print_line_graph(data=data, logdir=logdir, 
+                         title="Average proportional fitness value (related to maximum found in each task)", 
+                         xLabel="Generation", 
+                         yLabel="Avg. proportional fitness",
+                         )
+
+        print_line_graph(data=data2, logdir=logdir, 
+                         title="Average hamming global and per task hamming distance", 
+                         xLabel="Generation", 
+                         yLabel="Avg. Hamming distance",
+                         )
 
 
         # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
