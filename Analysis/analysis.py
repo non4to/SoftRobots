@@ -900,42 +900,21 @@ if __name__=="__main__":
     rootLog = "log"
     rootLog = pathlib.Path(rootLog)
     
+    logdirs = []
     for execution in rootLog.iterdir():
-        executionName = str(execution).split("log/")[1]
-        experimentName = executionName.split("_seed")[0]
-        seed = executionName.split("_seed")[1]
-        seed = seed.split("_")[0]
+        logdirs.append(str(execution))
+        # executionName = str(execution).split("log/")[1]
+        # experimentName = executionName.split("_seed")[0]
+        # seed = executionName.split("_seed")[1]
+        # seed = seed.split("_")[0]
 
-        print(execution, experimentName, seed)
-
-
-#     logdirs = [
-#     # "log/baseline-walkerv0_seed7_CGA_03271207",
-#     # "log/baseline-walkerv0_seed49_CGA_03271327",
-#     # "log/baseline-walkerv0_seed343_CGA_03271447",
-#     # "log/baseline-walkerv0_seed2401_CGA_03271611",
-#     # "log/baseline-walkerv0_seed16807_CGA_03271729",
-#     # "log/baseline-BridgeWalker_v0_seed7_CGA_03272353",
-#     # "log/baseline-BridgeWalker_v0_seed49_CGA_03280249",
-#     # "log/baseline-BridgeWalker_v0_seed343_CGA_03280548",
-#     # "log/baseline-BridgeWalker_v0_seed2401_CGA_03280851",
-#     # "log/baseline-BridgeWalker_v0_seed16807_CGA_03281201",
-#     "log/quadrantv0_seed7_CGA_03281508",
-#     # "log/quadrantv0_seed49_CGA_03281719",
-#     # "log/quadrantv0_seed343_CGA_03281922",
-#     # "log/quadrantv0_seed2401_CGA_03282134",
-#     # "log/quadrantv0_seed16807_CGA_03282354",
-#     # "log/testingAnalysis_v0_seed7_CGA_03291530"
-
-# ]
-
-#     for i, logdir in enumerate(logdirs):
-#         #prepare dfs
-#         df, taskMap, gridSize = load_log(logdir)
-#         rows, cols = gridSize
-#         #adds columns describing each robot
-#         newCols = df["shape"].apply(count_blocks).apply(pd.Series)
-#         df = pd.concat([df, newCols], axis=1)
+    for i, logdir in enumerate(logdirs):
+        #prepare dfs
+        df, taskMap, gridSize = load_log(logdir)
+        rows, cols = gridSize
+        #adds columns describing each robot
+        newCols = df["shape"].apply(count_blocks).apply(pd.Series)
+        df = pd.concat([df, newCols], axis=1)
         
         #get images
         # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(0,0))
@@ -945,27 +924,27 @@ if __name__=="__main__":
         # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(5,3))
         # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
 
-        # data = build_fitness_data(df=df, taskMap=taskMap)
-        # data2 = build_hamming_data(df=df, taskMap=taskMap)
+        data = build_fitness_data(df=df, taskMap=taskMap)
+        data2 = build_hamming_data(df=df, taskMap=taskMap)
         # # data3 = build_fit_scatter_data (df=df, taskMap=taskMap)
 
 
-        # print_line_graph(data=data, logdir=logdir, 
-        #                  title="Average proportional fitness value (related to maximum found in each task)", 
-        #                  xLabel="Generation", 
-        #                  yLabel="Avg. proportional fitness",
-        #                  )
+        print_line_graph(data=data, logdir=logdir, 
+                         title="Average proportional fitness value (related to maximum found in each task)", 
+                         xLabel="Generation", 
+                         yLabel="Avg. proportional fitness",
+                         )
 
-        # print_line_graph(data=data2, logdir=logdir, 
-        #                  title="Average hamming global and per task hamming distance", 
-        #                  xLabel="Generation", 
-        #                  yLabel="Avg. Hamming distance",
-        #                  )
+        print_line_graph(data=data2, logdir=logdir, 
+                         title="Average hamming global and per task hamming distance", 
+                         xLabel="Generation", 
+                         yLabel="Avg. Hamming distance",
+                         )
 
 
-        # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-        # print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-        # print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
     #---------------------------
 
 
