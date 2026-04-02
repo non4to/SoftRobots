@@ -220,7 +220,11 @@ class CGA():
             taskName = type(self._taskMap[pos]).__module__
             parent1 = self.grid[pos]
             #set to new grid (child goes if fit is same or better than parent)
-            newGrid[pos] = child if child.fit[taskName] >= parent1.fit[taskName] else parent1
+            # newGrid[pos] = child if child.fit[taskName] >= parent1.fit[taskName] else parent1
+
+            #child always takes parent's place
+            newGrid[pos] = child
+
             #save a bot in full log
             self.log_robot(robot=newGrid[pos], gen=self.currentGen, pos=pos, parent2id=parent2Id)
 

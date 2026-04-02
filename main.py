@@ -106,16 +106,15 @@ if __name__ == "__main__":
     with open('parameters.json', 'r') as f:
         params = json.load(f)       
 
-    # seeds2Run = [7, 49, 343, 2401, 16807] #first seeds to run
-    # seeds2Run2 = [8, 64, 512, 4096, 32768] #second seeds that run
-    seeds2Run2 = [7]
+    seeds2Run = [7, 49, 343, 2401, 16807] #first seeds to run
+    # seeds2Run2 = [8, 64, 512, 4096, 32768] #second seeds to run
     
     print(f"\n{'='*80}")
-    print(f"スタート {len(seeds2Run2)} SEEDS")
-    print(f"Seeds: {seeds2Run2}")
+    print(f"スタート {len(seeds2Run)} SEEDS")
+    print(f"Seeds: {seeds2Run}")
     print(f"{'='*80}\n")
 
-    for seed in seeds2Run2:
+    for seed in seeds2Run:
         print(f"\n{'='*80}")
         print(f"Current Seed: {seed}")
         print(f"{'='*80}\n")
