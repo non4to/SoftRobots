@@ -324,19 +324,16 @@ def build_fit_scatter_data (df: pd.DataFrame, taskMap: dict) -> dict:
     merged by load_log) to analyze specialist vs generalist robots.
 
     Returns:
-        {
-            "tasks": [taskA, taskB],        # sorted task names
-            "robots": [
+        "robots": [
                 {
                     "pos":       (x, y),
                     "localTask": str,        # task assigned to this cell
-                    "fitA":      float,      # normalized fitness on taskA
-                    "fitB":      float,      # normalized fitness on taskB
+                    "taskNameA":      float,      # normalized fitness on taskA
+                    "taskNameB":      float,      # normalized fitness on taskB
                     "delta":     float,      # |fitA - fitB| specialization score
                 },
                 ...
             ]
-        }
     """
     uniqueTasks = sorted(set(taskMap.values()))
     lastGen     = df["gen"].max()
@@ -347,32 +344,25 @@ def build_fit_scatter_data (df: pd.DataFrame, taskMap: dict) -> dict:
         all_fits = df["fit"].apply(lambda x: x.get(task, np.nan)).dropna()
         minmaxDict[task] = {"min": all_fits.min(), "max": all_fits.max()}
 
-    def normalize(value, task):
-        lo, hi = minmaxDict[task]["min"], minmaxDict[task]["max"]
-        return (value - lo) / (hi - lo) if hi != lo else 0.0
-
-    robots = []
+    bots = []
     for _, row in lastBots.iterrows():
         x, y = row["pos"]
         pos = f"({x},{y})"
-        taskName = taskMap[pos]
-        fitValue = row['fit']
-
-        for task in uniqueTasks:
-            pass
-
-        fitA      = normalize(row["fit"].get(uniqueTasks[0], 0.0), uniqueTasks[0])
-        fitB      = normalize(row["fit"].get(uniqueTasks[1], 0.0), uniqueTasks[1])
-
-        robots.append({
-            "pos":       (x, y),
+        localTask = taskMap[pos]
+        bot = {
+            "pos": row["pos"],
             "localTask": localTask,
-            "fitA":      fitA,
-            "fitB":      fitB,
-            "delta":     abs(fitA - fitB),
-        })
+        }
 
-    return {"tasks": uniqueTasks, "robots": robots}
+        fitValue = row['fit']        
+        for taskName in fitValue.keys():
+            bot[taskName] = -1
+            normFit = (fitValue[taskName] - minmaxDict[taskName]["min"]) / (minmaxDict[taskName]["max"] - minmaxDict[taskName]["min"])
+            bot[taskName] = normFit
+        
+        bot["delta"] = abs(bot[uniqueTasks[0]] - bot[uniqueTasks[1]])
+        bots.append(bot)
+    return {"tasks": uniqueTasks, "bots":bots}
 
 def build_directional_hamming_map(df: pd.DataFrame, rows:int, cols: int, toroid:bool=False):
     #grabs all present generations
@@ -812,34 +802,35 @@ def print_bot(logdir:str, df:pd.DataFrame, rows:int, cols:int, gen:int, pos:tupl
     botRow = df[mask].iloc[0]
     botShape = np.array(botRow["shape"])
     
-    #load modules
-    robotModule = importlib.import_module(f"robot.{botType}")
-    worldIndex = gridWorlds[pos[1]][pos[0]]
-    worldType = worldTypes[worldIndex]
-    worldModule = importlib.import_module(f"world.{worldType}")
+    for worldType in worldTypes:
+        #load modules
+        robotModule = importlib.import_module(f"robot.{botType}")
+        # worldIndex = gridWorlds[pos[1]][pos[0]]
+        # worldType = worldTypes[worldIndex]
+        worldModule = importlib.import_module(f"world.{worldType}")
 
-    #make bot and world
-    bot = robotModule.SinRobot()
-    bot.shape = botShape
-    world = worldModule.get_world()
+        #make bot and world
+        bot = robotModule.SinRobot()
+        bot.shape = botShape
+        world = worldModule.get_world()
 
-    #simulate and render
-    world.set_robot(bot)
-    world.reset()
-    viewer = world.get_viewer()
-    frames = []
-    for step in range(simSteps):
-        world.step()
-        frames.append(viewer.render(mode="img"))
+        #simulate and render
+        world.set_robot(bot)
+        world.reset()
+        viewer = world.get_viewer()
+        frames = []
+        for step in range(simSteps):
+            world.step()
+            frames.append(viewer.render(mode="img"))
 
-    outputfile = os.path.join(outputPath, 
-                              f"gen{gen}_pos{pos[0]}-{pos[1]}.gif")
-    imageio.mimsave(outputfile, frames, duration=20)
-    optimize(outputfile)
-    
-    score = world.get_score()
-    print(f"Score: {score}")
-    print(f"GIF saved in: {outputfile}")
+        outputfile = os.path.join(outputPath, 
+                                f"{str(worldType)}_gen{gen}_pos{pos[0]}-{pos[1]}.gif")
+        imageio.mimsave(outputfile, frames, duration=20)
+        optimize(outputfile)
+        
+        score = world.get_score()
+        print(f"Score: {score}")
+        print(f"GIF saved in: {outputfile}")
 
 def print_line_graph(data:dict, logdir:str, 
                      title:str="Title", 
@@ -895,6 +886,59 @@ def print_line_graph(data:dict, logdir:str,
         fig.savefig(f"{outputPath}/{title}", dpi=150)
     plt.close(fig)
 
+def print_scatter_graph(data: dict, logdir: str,
+                        title:str="Title", 
+                        xLabel:str="X", 
+                        yLabel:str="Y", 
+                        figsize:tuple=(8,8),
+                        colors:list[str]=["red","blue","purple","pink"]):
+    
+    outputPath = os.path.join(logdir, "Graphs")
+    os.makedirs(outputPath, exist_ok=True)
+    #save data
+    savedDictPath = os.path.join(outputPath, "scatterData.jsonl")
+    with open(savedDictPath, "w") as file:
+        for bot in data["bots"]:
+            record = {**bot, "pos": list(bot["pos"])}  # tuple → list for JSON
+            json.dump(record, file)
+            file.write("\n")
+
+    plt.close("all")
+    fig, ax = plt.subplots(figsize=figsize)
+
+    for i, task in enumerate(data["tasks"]):
+        botsFromTask = [bot for bot in data["bots"] if bot["localTask"]==task]
+        ax.scatter(
+            [bot[data["tasks"][0]] for bot in botsFromTask],
+            [bot[data["tasks"][1]] for bot in botsFromTask],
+            color = colors[i],
+            label = task.split(".")[-1],
+            alpha=0.8,
+            edgecolors="black",
+            linewidths=0.5,
+            s=80,
+            zorder=3,
+        )
+    
+        # Diagonal: perfect generalist sits here
+    ax.plot([0, 1], [0, 1], linestyle="--", color="gray",
+            linewidth=1, label="Same fitness line", zorder=2)
+
+    ax.set_xlabel(f"Normalized fitness — {data['tasks'][0]}", fontsize=11)
+    ax.set_ylabel(f"Normalized fitness — {data['tasks'][1]}", fontsize=11)
+    ax.set_title("Robots' normalized fitness for both tasks (last generation)", fontsize=13)
+    ax.set_xlim(0, 1.0)
+    ax.set_ylim(0, 1.0)
+    ax.set_xticks(np.arange(0, 1.0, 0.1))
+    ax.set_yticks(np.arange(0, 1.0, 0.1))
+    ax.set_aspect("equal")
+    ax.legend(fontsize=10)
+    ax.grid(True, linestyle="--", alpha=1)
+
+    fig.tight_layout()
+    fig.savefig(os.path.join(outputPath, "specialization_scatter.png"), dpi=150)
+    plt.close(fig)
+    print("Scatter saved.")
 
 if __name__=="__main__":
     rootLog = "log"
@@ -908,6 +952,8 @@ if __name__=="__main__":
         # seed = executionName.split("_seed")[1]
         # seed = seed.split("_")[0]
 
+    logdirs = ["log/quadrantv0_seed7_CGA_03281508"]
+
     for i, logdir in enumerate(logdirs):
         #prepare dfs
         df, taskMap, gridSize = load_log(logdir)
@@ -917,7 +963,7 @@ if __name__=="__main__":
         df = pd.concat([df, newCols], axis=1)
         
         #get images
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(0,0))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(7,8))
         # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(1,0))
         # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
         # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,3))
@@ -926,8 +972,7 @@ if __name__=="__main__":
 
         data = build_fitness_data(df=df, taskMap=taskMap)
         data2 = build_hamming_data(df=df, taskMap=taskMap)
-        # # data3 = build_fit_scatter_data (df=df, taskMap=taskMap)
-
+        # data3 = build_fit_scatter_data (df=df, taskMap=taskMap)
 
         print_line_graph(data=data, logdir=logdir, 
                          title="Average proportional fitness value (related to maximum found in each task)", 
@@ -940,11 +985,17 @@ if __name__=="__main__":
                          xLabel="Generation", 
                          yLabel="Avg. Hamming distance",
                          )
+        
+        # print_scatter_graph(data=data3, logdir=logdir,
+        #                 title="Title", 
+        #                 xLabel="X", 
+        #                 yLabel="Y", 
+        #                 figsize=(8,8),
+        #                 colors=["red","blue","purple","pink"])
 
-
-        print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-        print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-        print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        # print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        # print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
     #---------------------------
 
 
