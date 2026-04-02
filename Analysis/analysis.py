@@ -2,7 +2,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd, numpy as np
-import json, imageio, importlib, statistics
+import json, imageio, importlib, pathlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.patches import FancyArrowPatch
@@ -897,41 +897,53 @@ def print_line_graph(data:dict, logdir:str,
 
 
 if __name__=="__main__":
-    logdirs = [
-    # "log/baseline-walkerv0_seed7_CGA_03271207",
-    # "log/baseline-walkerv0_seed49_CGA_03271327",
-    # "log/baseline-walkerv0_seed343_CGA_03271447",
-    # "log/baseline-walkerv0_seed2401_CGA_03271611",
-    # "log/baseline-walkerv0_seed16807_CGA_03271729",
-    # "log/baseline-BridgeWalker_v0_seed7_CGA_03272353",
-    # "log/baseline-BridgeWalker_v0_seed49_CGA_03280249",
-    # "log/baseline-BridgeWalker_v0_seed343_CGA_03280548",
-    # "log/baseline-BridgeWalker_v0_seed2401_CGA_03280851",
-    # "log/baseline-BridgeWalker_v0_seed16807_CGA_03281201",
-    "log/quadrantv0_seed7_CGA_03281508",
-    # "log/quadrantv0_seed49_CGA_03281719",
-    # "log/quadrantv0_seed343_CGA_03281922",
-    # "log/quadrantv0_seed2401_CGA_03282134",
-    # "log/quadrantv0_seed16807_CGA_03282354",
-    # "log/testingAnalysis_v0_seed7_CGA_03291530"
+    rootLog = "log"
+    rootLog = pathlib.Path(rootLog)
+    
+    for execution in rootLog.iterdir():
+        executionName = str(execution).split("log/")[1]
+        experimentName = executionName.split("_seed")[0]
+        seed = executionName.split("_seed")[1]
+        seed = seed.split("_")[0]
 
-]
+        print(execution, experimentName, seed)
 
-    for i, logdir in enumerate(logdirs):
-        #prepare dfs
-        df, taskMap, gridSize = load_log(logdir)
-        rows, cols = gridSize
-        #adds columns describing each robot
-        newCols = df["shape"].apply(count_blocks).apply(pd.Series)
-        df = pd.concat([df, newCols], axis=1)
+
+#     logdirs = [
+#     # "log/baseline-walkerv0_seed7_CGA_03271207",
+#     # "log/baseline-walkerv0_seed49_CGA_03271327",
+#     # "log/baseline-walkerv0_seed343_CGA_03271447",
+#     # "log/baseline-walkerv0_seed2401_CGA_03271611",
+#     # "log/baseline-walkerv0_seed16807_CGA_03271729",
+#     # "log/baseline-BridgeWalker_v0_seed7_CGA_03272353",
+#     # "log/baseline-BridgeWalker_v0_seed49_CGA_03280249",
+#     # "log/baseline-BridgeWalker_v0_seed343_CGA_03280548",
+#     # "log/baseline-BridgeWalker_v0_seed2401_CGA_03280851",
+#     # "log/baseline-BridgeWalker_v0_seed16807_CGA_03281201",
+#     "log/quadrantv0_seed7_CGA_03281508",
+#     # "log/quadrantv0_seed49_CGA_03281719",
+#     # "log/quadrantv0_seed343_CGA_03281922",
+#     # "log/quadrantv0_seed2401_CGA_03282134",
+#     # "log/quadrantv0_seed16807_CGA_03282354",
+#     # "log/testingAnalysis_v0_seed7_CGA_03291530"
+
+# ]
+
+#     for i, logdir in enumerate(logdirs):
+#         #prepare dfs
+#         df, taskMap, gridSize = load_log(logdir)
+#         rows, cols = gridSize
+#         #adds columns describing each robot
+#         newCols = df["shape"].apply(count_blocks).apply(pd.Series)
+#         df = pd.concat([df, newCols], axis=1)
         
         #get images
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(0,0))
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(1,0))
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,3))
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(5,3))
-        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(0,0))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(1,0))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,3))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(5,3))
+        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
 
         # data = build_fitness_data(df=df, taskMap=taskMap)
         # data2 = build_hamming_data(df=df, taskMap=taskMap)
