@@ -3,6 +3,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd, numpy as np
 import json, imageio, importlib, pathlib
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.patches import FancyArrowPatch
@@ -908,6 +910,8 @@ if __name__=="__main__":
         # seed = executionName.split("_seed")[1]
         # seed = seed.split("_")[0]
 
+    logdirs = ["log/quadrant-v0_childFirst_seed7_CGA_04021805"]
+
     for i, logdir in enumerate(logdirs):
         #prepare dfs
         df, taskMap, gridSize = load_log(logdir)
@@ -917,35 +921,35 @@ if __name__=="__main__":
         df = pd.concat([df, newCols], axis=1)
         
         #get images
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(0,0))
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(1,0))
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,3))
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(5,3))
-        # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(0,0))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(9,9))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(0,9))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(9,0))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,4))
+        print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(5,5))
 
-        data = build_fitness_data(df=df, taskMap=taskMap)
-        data2 = build_hamming_data(df=df, taskMap=taskMap)
-        # # data3 = build_fit_scatter_data (df=df, taskMap=taskMap)
-
-
-        print_line_graph(data=data, logdir=logdir, 
-                         title="Average proportional fitness value (related to maximum found in each task)", 
-                         xLabel="Generation", 
-                         yLabel="Avg. proportional fitness",
-                         )
-
-        print_line_graph(data=data2, logdir=logdir, 
-                         title="Average hamming global and per task hamming distance", 
-                         xLabel="Generation", 
-                         yLabel="Avg. Hamming distance",
-                         )
+    #     data = build_fitness_data(df=df, taskMap=taskMap)
+    #     data2 = build_hamming_data(df=df, taskMap=taskMap)
+    #     # # data3 = build_fit_scatter_data (df=df, taskMap=taskMap)
 
 
-        print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-        print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-        print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-    #---------------------------
+    #     print_line_graph(data=data, logdir=logdir, 
+    #                      title="Average proportional fitness value (related to maximum found in each task)", 
+    #                      xLabel="Generation", 
+    #                      yLabel="Avg. proportional fitness",
+    #                      )
+
+    #     print_line_graph(data=data2, logdir=logdir, 
+    #                      title="Average hamming global and per task hamming distance", 
+    #                      xLabel="Generation", 
+    #                      yLabel="Avg. Hamming distance",
+    #                      )
+
+
+    #     print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+    #     print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+    #     print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+    # #---------------------------
 
 
 
