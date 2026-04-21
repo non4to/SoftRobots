@@ -232,7 +232,6 @@ class CGA():
         #update current grid for next gen
         self.grid = newGrid
 
-    # #Need to check
     def evaluate_on_all_tasks(self):
         """This function goes through all cells in [self.grid] and evaluates all robots in all tasks 
         (only the tasks the robot are missing)"""
@@ -274,7 +273,6 @@ class CGA():
                     self.meanTime.append(s[1])
 
             #save scores in bots
-            # print("おろこびしょ")
             for i,(bot, pos) in enumerate(toEvaluate[taskName]):
                 bot.fit[taskName] = scores[i][0]
                 self.log_robot(robot=bot, gen=99999, pos=pos)
