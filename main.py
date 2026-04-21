@@ -39,6 +39,10 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
     os.makedirs(prefix, exist_ok=True)
     shutil.copy("parameters.json", f"{prefix}{os.sep}parameters.json")
 
+    #Progress Archive
+    progressFilePath = f"{prefix}{os.sep}expProgress.txt"
+    progressCheckPoints = max(1, int(options.max_gen * 0.15)) #every 20%
+
     # # Loading the world from a module (random) or file (fixed)
     # if (args[0][-5:] == ".json"):
     #     print(f"Loading world from file {args[0]}.")
@@ -78,6 +82,12 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
         ###
         generator.reset()
         for gen in range(options.max_gen):
+            if (gen % (progressCheckPoints)==0) or (gen==options.max_gen-1):
+                with open(progressFilePath,"a") as pFile:
+                    line = f"Now starting generation {gen+1}/{options.max_gen}, {time.time() - startTime} elapsed since start.\n"
+                    pFile.write(line)
+                    print(f"--- Checkpoint: {line} ---")
+
             generator.update()
             # generator.save_grid(address="")
         
@@ -107,7 +117,7 @@ if __name__ == "__main__":
         params = json.load(f)       
 
     # seeds2Run = [7, 49, 343, 2401, 16807] #first seeds to run
-    # seeds2Run2 = [8, 64, 512, 4096, 32768] #second seeds that run
+    # seeds2Run = [8, 64, 512, 4096, 32768] #second seeds to run
     seeds2Run2 = [7]
     
     print(f"\n{'='*80}")

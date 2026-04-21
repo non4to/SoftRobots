@@ -123,8 +123,8 @@ class CGA():
             "id":      robot.id,
             "gen":     gen,
             "pos":     list(pos),
-            "fit":     robot.fit,
             "parent2": parent2id,   # parent1 is the bot that occupied this position in the last gen
+            "fit":     robot.fit,
             "shape":   robot.shape.tolist()
         }
         with open(self._botsLog, "a") as f:
@@ -169,7 +169,7 @@ class CGA():
     
     def update(self):        
         self.currentGen += 1
-        if self.currentGen%50==0: print(f"Gen: {self.currentGen}")
+        # if self.currentGen % (self.lastGen*(0.1))==0: print(f"Gen: {self.currentGen}")
         childrenList = []
         evalpars = []
 
@@ -219,15 +219,20 @@ class CGA():
         for i, (pos, child, parent2Id, _) in enumerate(childrenList):
             taskName = type(self._taskMap[pos]).__module__
             parent1 = self.grid[pos]
+            parent2 = parent2Id
             #set to new grid (child goes if fit is same or better than parent)
-            newGrid[pos] = child if child.fit[taskName] >= parent1.fit[taskName] else parent1
+            if child.fit[taskName] >= parent1.fit[taskName]:
+                newGrid[pos] = child
+            else:
+                newGrid[pos] = parent1
+                parent2 = -1
             #save a bot in full log
-            self.log_robot(robot=newGrid[pos], gen=self.currentGen, pos=pos, parent2id=parent2Id)
+            self.log_robot(robot=newGrid[pos], gen=self.currentGen, pos=pos, parent2id=parent2)
 
         #update current grid for next gen
         self.grid = newGrid
 
-    #TODO: Still need to test this   
+    # #Need to check
     def evaluate_on_all_tasks(self):
         """This function goes through all cells in [self.grid] and evaluates all robots in all tasks 
         (only the tasks the robot are missing)"""
