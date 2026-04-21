@@ -1130,7 +1130,7 @@ if __name__=="__main__":
     rootLog = "log"
     rootLog = pathlib.Path(rootLog)
     
-    # # put_data_together(rootLog=rootLog)
+    # put_data_together(rootLog=rootLog)
     # df = pd.read_parquet("log/completeData_evalBaselines.parquet")
     # evaluate_bots_from_archive(df)
     df, fitNames, minMaxValues = load_parquet_log("log/completeData_evalBaselines.parquet")
