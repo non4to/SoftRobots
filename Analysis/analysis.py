@@ -884,7 +884,7 @@ def print_line_graph(data:dict, logdir:str,
                      xLabel:str="X", 
                      yLabel:str="Y", 
                      figsize:tuple=(8,8),
-                     colors:list[str]=["red","blue","purple","pink"]):
+                     colors:list[str]=["red","blue","purple","pink","green","gray","black"]):
     """
     Renders a line chart from a list of datasets.
 
@@ -1129,20 +1129,11 @@ def evaluate_bots_from_archive(df:pd.DataFrame):
 if __name__=="__main__":
     rootLog = "log"
     rootLog = pathlib.Path(rootLog)
+    
     # # put_data_together(rootLog=rootLog)
-    df = pd.read_parquet("log/completeData.parquet")
-    evaluate_bots_from_archive(df)
+    # df = pd.read_parquet("log/completeData_evalBaselines.parquet")
+    # evaluate_bots_from_archive(df)
     df, fitNames, minMaxValues = load_parquet_log("log/completeData_evalBaselines.parquet")
-
-    print(df.head())
-    print(df["fit_world.BridgeWalker_v0"].unique())
-
-    mask_walker = df["experiment"] == "baseline-walkerv0"
-    filled = df.loc[mask_walker, "fit_world.BridgeWalker_v0"].notna().sum()
-    total  = mask_walker.sum()
-    print(f"baseline-walkerv0 preenchidos: {filled}/{total}")
-    print(df.loc[mask_walker, "fit_world.BridgeWalker_v0"].describe())
-
 
     # ### All columns of DF
     # columns = list(df.columns)
