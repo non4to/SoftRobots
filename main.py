@@ -121,11 +121,11 @@ if __name__ == "__main__":
     # seeds2Run2 = [7]
     
     print(f"\n{'='*80}")
-    print(f"スタート {len(seeds2Run2)} SEEDS")
-    print(f"Seeds: {seeds2Run2}")
+    print(f"スタート {len(seeds2Run)} SEEDS")
+    print(f"Seeds: {seeds2Run}")
     print(f"{'='*80}\n")
 
-    for seed in seeds2Run2:
+    for seed in seeds2Run:
         print(f"\n{'='*80}")
         print(f"Current Seed: {seed}")
         print(f"{'='*80}\n")
