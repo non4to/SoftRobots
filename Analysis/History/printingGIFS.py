@@ -28,8 +28,8 @@ HATCHING_PATTERNS = {
 }
 
 def load_parquet_log(archivePath:str):
-    """Returns (escalated fitness with min max found for each task)
-    df -> read dataframe
+    """Returns (normalized fitness with min max found for each task)
+    df -> read datafram
     fitNames -> names of columns that have task fitness
     minmaxValues -> minimum and maximum found for each task found in df"""
     df = pd.read_parquet(archivePath)
@@ -888,7 +888,7 @@ def print_line_graph(data:dict, logdir:str,
                      xLabel:str="X", 
                      yLabel:str="Y", 
                      figsize:tuple=(8,8),
-                     colors:list[str]=["red","blue","purple","green","pink","gray","black"]):
+                     colors:list[str]=["red","blue","purple","pink","green","gray","black"]):
     """
     Renders a line chart from a list of datasets.
 
@@ -1131,155 +1131,19 @@ def evaluate_bots_from_archive(df:pd.DataFrame):
 
 
 if __name__=="__main__":
-    pass
-    # rootLog = "log"
-    # rootLog = pathlib.Path(rootLog)
-    
-    # # put_data_together(rootLog=rootLog)
-    # # df = pd.read_parquet("log/completeData_evalBaselines.parquet")
-    # # evaluate_bots_from_archive(df)
-    # df, fitNames, minMaxValues = load_parquet_log("log/completeData_evalBaselines.parquet")
+    # Do this with one experiment folder (ex: log/chessBoard_v1_seed7_CGA_04211443)
+    # Heatmaps of evolving outputs (fitness, hamming distance, avg hamming distance)
+    logdir = "log/chessBoard_v1_seed7_CGA_04211443"
 
-    # ### All columns of DF
-    # columns = list(df.columns)
-    # #['id', 'gen', 'pos', 'parent2', 'shape', 'address', 'experiment', 
-    # # 'seed', 'empty', 'rigid', 'soft', 'h_act', 'v_act', 'actuators', 
-    # # 'height', 'width', 'hSimScore', 'vSimScore', 'fit_world.Walker_v0', 
-    # # 'fit_world.BridgeWalker_v0']
-    # ### All experiments in DF
-    # experiments = list(df["experiment"].unique())
-    # # ['baseline-walkerv0', 'quadrant-v0_childFirst', 
-    # #  'quadrantv0', 'baseline-BridgeWalker_v0']
-    # ### Fit names and max fitness found
-    # fitNames = ["fit_world.Walker_v0", "fit_world.BridgeWalker_v0"]
-    # maxFits = df.groupby("experiment")[fitNames].max()
-    # # Max fits found:                           fit_world.Walker_v0  fit_world.BridgeWalker_v0
-    # # experiment                                                              
-    # # baseline-BridgeWalker_v0                  NaN                   0.981070
-    # # baseline-walkerv0                    0.932207                        NaN
-    # # quadrant-v0_childFirst               1.000000                   1.000000
-    # # quadrantv0                           0.923777                   0.924497
-    # ### Getting task map (its the same for all quadrants)
-    # taskmap_path = os.path.join("log/quadrant-v0_childFirst_seed7_CGA_04021805", "grid_taskMap.json")
-    # with open(taskmap_path, "r") as f:
-    #     taskMap = json.load(f)   
+    # read robots_log and export it to pandas df
+    df, taskMap, gridSize = load_log(logdir)
+    rows, cols = gridSize
 
-    # experiments = ["baseline-walkerv0", "baseline-BridgeWalker_v0", "quadrantv0"]
+    #get gifs
+    # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+    # print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+    # print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=100, frameDuration=300)
 
-    # #v_act and h_act
-    # wantedDatas = ["v_act", "h_act"]
-    # for wantedData in wantedDatas:
-    #     fitsMin = [0,0.5,0.75,0.85,0.9,0.95]
-    #     for fitMin in fitsMin:
-    #         new_df, maxFits = build_hist_data(df, wantedData, fitMin, experiments, fitNames)
-    #         new_df[wantedData] = new_df[wantedData] * 25
-    #         plot_hist_data(new_df, x=wantedData, graphName=f"{wantedData}-Comparison of baseline and quadrand tasks (fit>{fitMin})", isDiscrete=True)
-        
-    # # #height, width, 
-    # # wantedDatas = ["height", "width"]
-    # # for wantedData in wantedDatas:
-    # #     fitsMin = [0]
-    # #     for fitMin in fitsMin:
-    # #         new_df, maxFits = build_hist_data(df, wantedData, fitMin, experiments, fitNames)
-    # #         plot_hist_data(new_df, x=wantedData, graphName=f"{wantedData}-Comparison of baseline tasks (fit>{fitMin})", isDiscrete=True)
-
-    # # # simmetry
-    # # wantedDatas = ["vSimScore", "hSimScore"]
-    # # for wantedData in wantedDatas:
-    # #     fitsMin = [0, 0.5, 0.75, 0.85, 0.9, 0.95]
-    # #     for fitMin in fitsMin:
-    # #         new_df, maxFits = build_hist_data(df, wantedData, fitMin, experiments, fitNames)
-    # #         new_df[wantedData] = new_df[wantedData].round(1).astype(str)
-    # #         plot_hist_data(new_df, x=wantedData, graphName=f"{wantedData}-Comparison of baseline tasks (fit>{fitMin})", isDiscrete=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#############################################################################
-#############################################################################
-#############################################################################
-#############################################################################
-#############################################################################
-#############################################################################
-#############################################################################
-#############################################################################
-#############################################################################
-    #adds columns describing each robot
-
-
-    # logdirs = []
-    # for execution in rootLog.iterdir():
-    #     logdirs.append(str(execution))
-    #     # executionName = str(execution).split("log/")[1]
-    #     # experimentName = executionName.split("_seed")[0]
-    #     # seed = executionName.split("_seed")[1]
-    #     # seed = seed.split("_")[0]
-
-    # logdirs = ["log/baseline-BridgeWalker_v0_seed7_CGA_03272353"]
-
-    # for i, logdir in enumerate(logdirs):
-    #     #prepare dfs
-    #     df, taskMap, gridSize = load_log(logdir)
-    #     rows, cols = gridSize
-    #     #adds columns describing each robot
-    #     # newCols = df["shape"].apply(characterize_bot).apply(pd.Series)
-    #     # df = pd.concat([df, newCols], axis=1)
-        
-    #     #get images
-    #     print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(0,0))
-    #     # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(1,0))
-    #     # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
-    #     # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,3))
-    #     # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(5,3))
-    #     # print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(4,2))
-
-    #     # data = build_fitness_data(df=df, taskMap=taskMap)
-    #     # data2 = build_hamming_data(df=df, taskMap=taskMap)
-    #     data3 = build_fit_scatter_data (df=df, taskMap=taskMap)
-
-    #     # print_line_graph(data=data, logdir=logdir, 
-    #     #                  title="Average proportional fitness value (related to maximum found in each task)", 
-    #     #                  xLabel="Generation", 
-    #     #                  yLabel="Avg. proportional fitness",
-    #     #                  )
-
-    #     # print_line_graph(data=data2, logdir=logdir, 
-    #     #                  title="Average hamming global and per task hamming distance", 
-    #     #                  xLabel="Generation", 
-    #     #                  yLabel="Avg. Hamming distance",
-    #                     #  )
-        
-    #     print_scatter_graph(data=data3, logdir=logdir,
-    #                     title="Title", 
-    #                     xLabel="X", 
-    #                     yLabel="Y", 
-    #                     figsize=(8,8),
-    #                     colors=["red","blue","purple","pink"])
-
-    #     # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-    #     # print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-    #     # print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-    # #---------------------------
-
-
-
-
-
-
-
-
-
-
+    # #This to get a specific robot
+    print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(5,7))
+    print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(5,8))

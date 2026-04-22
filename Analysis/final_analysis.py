@@ -30,72 +30,61 @@ TASKMAPS = {
     - Check:
         - Does quadrant sacrifice fitness to acomodate two tasks? Does quadrand achieve reasonable level of fitness?
 """
-def plot_fitness_curves(df: pd.DataFrame):
+def build_fitness_data(df: pd.DataFrame):
     """
-    Reads the robots log dataframe and builds one dataset per task.
+    Reads the robots log dataframe and builds one dataset per task per experiment
+        - Maps(experiments) that have more than one task would have 2 dicts as output: One for each task
     Each dataset contains the mean fitness and std deviation per generation.
 
     Returns a list of dicts with format:
         {
-            "label": str,        # task name (short)
+            "label": str,        # experiment-task (short description)
             "x": list[int],      # generation indices
             "y": list[float],    # mean fitness per generation (across seed)
             "std": list[float],  # std deviation across seeds (or within itself if only seed)
         }
     """
-    df = df.loc[df["experiment"] != "quadrant-v0_childFirst"]
+    df = df.loc[df["experiment"] != "quadrant-v0_childFirst"].copy()
     # lista com todas as gerações
     # para cada geração, passar por cada celular e pegar o valor de fitness da task daquela célula e colocar numa lista.
     # tirar média e desvio padrão
     generations = sorted(df["gen"].unique())
-    curves = [ 
-            #(labelName, experimentName, fitName)
-            ("baseline-walker", "baseline-walkerv0", "fit_world.Walker_v0"),
-            ("baseline-bridgeWalker", "baseline-BridgeWalker_v0", "fit_world.BridgeWalker_v0"), 
-            ("quadrant-walker", "quadrantv0", "fit_world.Walker_v0"),
-            ("quadrant-bridge", "quadrantv0", "fit_world.BridgeWalker_v0")]
+    experiments = sorted(df["experiment"].unique())
     output = {}
-    for label, experiment, fitName in curves:
-        output[label]["label"] = label
-        output[label]["x"] = []
-        output[label]["y"] = []
-        output[label]["std"] = []    
 
-        newDf = df[(df["experiment"]==experiment)].copy()
-        for i, gen in enumerate(generations):
-            genBots = newDf[newDf["gen"]==gen].copy()
+    #para cada experimento
+    for experiment in experiments:
+    #   para cada unique task daquele experimento, um label
+        newDf = df.loc[df["experiment"] == experiment].copy()
+        uniqueTasks = list(set(TASKMAPS[experiment].values()))
 
+        for i,task in enumerate(uniqueTasks):
+            output[f"{experiment}-{task}"] = {}
+            output[f"{experiment}-{task}"]["label"] = f"{experiment}-{task}"
+            output[f"{experiment}-{task}"]["x"] = []
+            output[f"{experiment}-{task}"]["y"] = []
+            output[f"{experiment}-{task}"]["std"] = []
 
-    # for label in labels:
-    #     if task not in output: output[task] = {}
-    #     output[task]["label"] = label
-    #     output[task]["x"] = []
-    #     output[task]["y"] = []
-    #     output[task]["std"] = []    
+        for gen in generations:
+            genBots = newDf.loc[newDf["gen"]==gen].copy()
+            valueDict = {}
 
-    for genIdx, gen in enumerate(generations):
-        genBots = df[df["gen"]==gen].copy()
-        valueList = {}
+            for _, row in genBots.iterrows():
+                x, y = row["pos"]
+                pos = f"({x},{y})"
+                taskName = TASKMAPS[experiment][pos]
+                if taskName not in valueDict: valueDict[taskName] = []
+                fitValue = row[f"fit_{taskName}"]
+                valueDict[taskName].append(fitValue)
+        
+            for task in uniqueTasks:
+                avgValue = np.mean(valueDict[task])
+                stdValue = np.std(valueDict[task])
 
-        for _, row in genBots.iterrows():
-            x, y = row["pos"]
-            pos = f"({x},{y})"
-            taskName = taskMap[pos]
-            if taskName not in valueList: valueList[taskName] = []
-            fitValue = row['fit'][taskName]
-            valueList[taskName].append(fitValue)
-
-        for task in output:
-            avgValue = np.mean(valueList[task])
-            stdValue = np.std(valueList[task])
-
-            output[task]["x"].append(gen)
-            output[task]["y"].append(avgValue)
-            output[task]["std"].append(stdValue)
-    print(output)
+                output[f"{experiment}-{task}"]["x"].append(gen)
+                output[f"{experiment}-{task}"]["y"].append(avgValue)
+                output[f"{experiment}-{task}"]["std"].append(stdValue)
     return output   
-
-
 """
  2) Hamming distance: Same task X Different task
     - Different task: How similar are the bots that were optimized for different things.
@@ -134,7 +123,9 @@ def plot_fitness_curves(df: pd.DataFrame):
     - Check
         - Are bots that were optimized in the same task similar? 
         - Did the new grid (quadrand) create differences between robots?
+"""
 
+"""
  3) CrossEvaluation: Robustness
  #TODO: Estou fazendo o codigo pros robos serem avaliados na task que nao foram ainda. 
     - Evaluate all bots from the last generation of baseline in the tasks they weren't evaluated.
@@ -158,8 +149,14 @@ def plot_fitness_curves(df: pd.DataFrame):
 """
 
 if __name__=="__main__":
-    rootLog = "log"
+    rootLog = "log/v0"
     rootLog = pathlib.Path(rootLog)
     # # put_data_together(rootLog=rootLog)
-    df, fitNames, minMaxValues = tools.load_parquet_log("log/completeData.parquet")
-    plot_fitness_curves(df)
+    df, fitNames, minMaxValues = tools.load_parquet_log("log/v0/completeData_evalBaselines.parquet")    
+    fitData = build_fitness_data(df)
+    tools.print_line_graph(data=fitData, logdir="log/v0", 
+                         title="Average scaled fitness value (related to maximum and minimum found in all executions)", 
+                         xLabel="Generation", 
+                         yLabel="Avg. scaled fitness",
+                         )
+
