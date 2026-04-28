@@ -98,9 +98,9 @@ def print_pair_plot(df:pd.DataFrame, minFit:float=0.8, logDir:str="."):
     for task in df['assignedTask'].unique():
         df_task = df.loc[df['assignedTask'] == task].copy()
 
-        for col in CHARACTERISTICS:
-            noiseCol = np.random.uniform(-noise, noise, size=len(df_task))
-            df_task[col] = df_task[col] + noiseCol
+        # for col in CHARACTERISTICS:
+        #     noiseCol = np.random.uniform(-noise, noise, size=len(df_task))
+        #     df_task[col] = df_task[col] + noiseCol
 
         pair = sns.pairplot(
             df_task,
@@ -108,7 +108,7 @@ def print_pair_plot(df:pd.DataFrame, minFit:float=0.8, logDir:str="."):
             hue='colorLabel',
             palette=labelColors,
             kind='scatter',
-            plot_kws={'alpha': 1, 's': 10}, #for kind scatter
+            plot_kws={'alpha': 1, 's': 15}, #for kind scatter
             diag_kind='kde',
             # corner=True,
             markers=["s","d"],
@@ -118,9 +118,9 @@ def print_pair_plot(df:pd.DataFrame, minFit:float=0.8, logDir:str="."):
         for ax in pair.axes.flatten():
             ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.5)
 
-        pair.map_lower(sns.kdeplot, levels=4, color=".2")
+        # pair.map_lower(sns.kdeplot, levels=4, color=".2")
         pair.figure.suptitle(f'Pairplot por experimento+task  (fitness >= {minFit})', y=1.01)
-        pair.figure.savefig(f'{logDir}/pairplot_{minFit}-{task}.png', bbox_inches='tight', dpi=150)
+        pair.figure.savefig(f'{logDir}/noNOisePairplot_{minFit}-{task}.png', bbox_inches='tight', dpi=150)
         plt.close(pair.figure)
         print(f"Salvo: {logDir}/pairplot_{task}.png")
 """
@@ -307,9 +307,11 @@ if __name__=="__main__":
     rootLog = pathlib.Path(rootLog)
     # # put_data_together(rootLog=rootLog)
     df, fitNames, minMaxValues = tools.load_parquet_log("log/v0/completeData_evalBaselines.parquet")    
-    for fit in [0.85, 0.9, 0.95,1]:
+    for fit in [0.93]:
          print_pair_plot(df=df, minFit=fit, logDir=rootLog)
-
+    # mask = (df["experiment"] == "quadrantv0")
+    # df = df.loc[mask]
+    # print(df["fit_world.BridgeWalker_v0"].max())
 
     # # Fitness figure
     # fitData = build_fitness_data(df)
