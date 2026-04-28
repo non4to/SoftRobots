@@ -16,8 +16,8 @@ EXPERIMENT_NAMES = ['baseline-walkerv0','quadrant-v0_childFirst','quadrantv0',
 
 SEEDS = ['8','16807','49','4096','32768','64','7','343','2401','512']
 
-MIN_MAX_FOUND = {'fit_world.Walker_v0': [-66.30151741956223, 115.50124506255865], 
-                 'fit_world.BridgeWalker_v0': [-78.46431125410749, 93.85425490887846]}
+# MIN_MAX_FOUND = {'fit_world.Walker_v0': [-66.30151741956223, 115.50124506255865], 
+#                  'fit_world.BridgeWalker_v0': [-78.46431125410749, 93.85425490887846]}
 
 HATCHING_PATTERNS = {
     0: '',     
@@ -33,6 +33,8 @@ def load_parquet_log(archivePath:str):
     fitNames -> names of columns that have task fitness
     minmaxValues -> minimum and maximum found for each task found in df"""
     df = pd.read_parquet(archivePath)
+    df = df.loc[df['experiment'] != 'quadrant-v0_childFirst'].copy()
+
     fitNames = []
     minmaxValues = {}
 

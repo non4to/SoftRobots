@@ -278,3 +278,4 @@ class CGA():
                 self.log_robot(robot=bot, gen=99999, pos=pos)
 
     
+dwwd
