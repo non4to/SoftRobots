@@ -84,7 +84,7 @@ def main(world_types:list[str], robot_type:str, save_interval:int=1, seed:int=7,
         for gen in range(options.max_gen):
             if (gen % (progressCheckPoints)==0) or (gen==options.max_gen-1):
                 with open(progressFilePath,"a") as pFile:
-                    line = f"Now starting generation {gen+1}/{options.max_gen}, {time.time() - startTime} elapsed since start.\n"
+                    line = f"Now starting generation {gen+1}/{options.max_gen}, {(time.time() - startTime)/60}min elapsed since start.\n"
                     pFile.write(line)
                     print(f"--- Checkpoint: {line} ---")
 
