@@ -1133,7 +1133,6 @@ def evaluate_bots_from_archive(df:pd.DataFrame):
 
 
 if __name__=="__main__":
-    pass
     # rootLog = "log"
     # rootLog = pathlib.Path(rootLog)
     
@@ -1230,15 +1229,15 @@ if __name__=="__main__":
     #     # seed = executionName.split("_seed")[1]
     #     # seed = seed.split("_")[0]
 
-    # logdirs = ["log/baseline-BridgeWalker_v0_seed7_CGA_03272353"]
+    logdirs = ["log/quadrantv1_seed7_CGA_04302108", "log/baseline-BridgeWalkerv1_seed7_CGA_04291045", "log/baseline-walkerv1_seed7_CGA_04281958"]
 
-    # for i, logdir in enumerate(logdirs):
-    #     #prepare dfs
-    #     df, taskMap, gridSize = load_log(logdir)
-    #     rows, cols = gridSize
-    #     #adds columns describing each robot
-    #     # newCols = df["shape"].apply(characterize_bot).apply(pd.Series)
-    #     # df = pd.concat([df, newCols], axis=1)
+    for i, logdir in enumerate(logdirs):
+        #prepare dfs
+        df, taskMap, gridSize = load_log(logdir)
+        rows, cols = gridSize
+        #adds columns describing each robot
+        # newCols = df["shape"].apply(characterize_bot).apply(pd.Series)
+        # df = pd.concat([df, newCols], axis=1)
         
     #     #get images
     #     print_bot(logdir=logdir, df=df, rows=rows, cols=cols, gen=500, pos=(0,0))
@@ -1271,9 +1270,9 @@ if __name__=="__main__":
     #                     figsize=(8,8),
     #                     colors=["red","blue","purple","pink"])
 
-    #     # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-    #     # print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
-    #     # print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        # print_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        # print_fitness_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
+        print_directional_hammming_map_gif(logdir=logdir, df=df, rows= rows, cols=cols, taskMap=taskMap, taskColors=["green","purple"], frameInterval=5, frameDuration=300)
     # #---------------------------
 
 
