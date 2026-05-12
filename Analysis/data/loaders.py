@@ -1,5 +1,12 @@
 import pandas as pd
-import os, json, time
+import numpy as np
+import os, json, time, pathlib
+
+###########################################################
+# loaders.py
+###########################################################
+# methods that read and characterize (generaly) data
+###########################################################
 
 def put_data_together(rootLog:str):
     """Reads a bunch of experiments that are in [rootLog] and puts them all in the same parquet file after adding robots characterization
@@ -7,14 +14,14 @@ def put_data_together(rootLog:str):
 
     Output:
     Creates a file named [completeData.parquet] in [rootLog]"""
-
+    rootLogPath = pathlib.Path(rootLog)
     stime = time.time()
     logdirs = []
     allData = []
-    for execution in rootLog.iterdir():
+    for execution in rootLogPath.iterdir():
         if "parquet" in str(execution): continue
         logdirs.append(str(execution))
-        executionName = str(execution).split("log/")[1]
+        executionName = str(execution).split(f"{rootLog}/")[1]
         experimentName = executionName.split("_seed")[0]
         seed = executionName.split("_seed")[1]
         seed = seed.split("_")[0]
@@ -74,7 +81,7 @@ def put_data_together(rootLog:str):
 
     fitCols = pd.json_normalize(df['fit']).add_prefix('fit_')
     df = pd.concat([df.drop(columns=['fit']), fitCols], axis=1)
-    df.to_parquet(os.path.join(rootLog,f"completeData.parquet"), engine='pyarrow', index=False)
+    df.to_parquet(os.path.join(rootLogPath,f"completeData.parquet"), engine='pyarrow', index=False)
     end3=time.time()    
     print(f"Finished write parquet file in {end3-end2} seconds.")
 
@@ -87,7 +94,7 @@ def load_parquet_log(archivePath:str):
     fitNames -> names of columns that have task fitness
     minmaxValues -> minimum and maximum found for each task found in df"""
     df = pd.read_parquet(archivePath)
-    df = df.loc[df['experiment'] != 'quadrant-v0_childFirst'].copy()
+    # df = df.loc[df['experiment'] != 'quadrant-v0_childFirst'].copy()
 
     fitNames = []
     minmaxValues = {}
@@ -141,6 +148,10 @@ def load_log(logdir: str):
             df.loc[mask, "fit"] = df.loc[mask, "fit"].apply(lambda oldFitDict: {**oldFitDict, **extraFit}) #for the bot where the mask is true,  it puts the keys of extraFit in oldFitDict
     
     df = df[df["gen"] != 99999] #erases the lines with the extra gen because we got this data
+    
+    fitCols = pd.json_normalize(df['fit']).add_prefix('fit_')
+    df = pd.concat([df.drop(columns=['fit']), fitCols], axis=1)
+    
     return df, taskMap, (rows, cols)
 
 if __name__=="__main__":

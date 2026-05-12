@@ -832,58 +832,7 @@ def simulate_bot(paramDir:str, task:str, shape:list) -> float:
         world.step()
     return world.get_score()
 
-def print_bot(logdir:str, df:pd.DataFrame, rows:int, cols:int, gen:int, pos:tuple[int,int]):
-    #Creates folder if it doesnt exist
-    outputPath = os.path.join(logdir, "printedBots")
-    os.makedirs(outputPath, exist_ok=True)
 
-    #load parameters
-    with open(os.path.join(logdir, 'parameters.json'), 'r') as f:
-        params = json.load(f)  
-    
-    botType = params["robot_type"]
-    worldTypes = params["world_types"]
-    gridWorlds = params["grid_worlds"]
-    simSteps = params["sim_step"]
-
-    #get bot from df
-    mask = (df["gen"]==gen) & (df["pos"]==pos)
-    if not mask.any():
-        print("Didn't find that bot!")
-        return
-    
-    botRow = df[mask].iloc[0]
-    botShape = np.array(botRow["shape"])
-    
-    for worldType in worldTypes:
-        #load modules
-        robotModule = importlib.import_module(f"robot.{botType}")
-        # worldIndex = gridWorlds[pos[1]][pos[0]]
-        # worldType = worldTypes[worldIndex]
-        worldModule = importlib.import_module(f"world.{worldType}")
-
-        #make bot and world
-        bot = robotModule.SinRobot()
-        bot.shape = botShape
-        world = worldModule.get_world()
-
-        #simulate and render
-        world.set_robot(bot)
-        world.reset()
-        viewer = world.get_viewer()
-        frames = []
-        for step in range(simSteps):
-            world.step()
-            frames.append(viewer.render(mode="img"))
-
-        outputfile = os.path.join(outputPath, 
-                                f"{str(worldType)}_gen{gen}_pos{pos[0]}-{pos[1]}.gif")
-        imageio.mimsave(outputfile, frames, duration=20)
-        optimize(outputfile)
-        
-        score = world.get_score()
-        print(f"Score: {score}")
-        print(f"GIF saved in: {outputfile}")
 
 def print_line_graph(data:dict, logdir:str, 
                      title:str="Title", 
